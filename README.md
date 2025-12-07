@@ -205,6 +205,11 @@ npm run dev:api       # API only (port 3030)
 npm run dev:client    # Client only (port 3001)
 ```
 
+### Editor Integration
+
+- **Neovim/Vim**: Full support for editing project files
+- **Warp Terminal**: Enhanced experience with Vim keybindings available in Warp's input editor
+
 ### Production Build
 
 ```bash

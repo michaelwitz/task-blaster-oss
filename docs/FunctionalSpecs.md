@@ -7,6 +7,7 @@ The following functional specifications are intended to outline all key requirem
 1. **Kanban Board**
 
    - Drag-and-drop task management across multiple columns (Todo, In Progress, In Review, Done)
+   - Project admin user can create/define Kanban column names (Ticket Status) and set the ordering of the columns.
    - Auto-generated, human-readable task identifiers for easy reference
    - Task lifecycle tracking with automatic timestamps for task creation, start, and completion dates
    - **Sparse Numbering System**: Task positions use sparse numbering (increments of 10) for efficient drag-and-drop operations
@@ -45,6 +46,7 @@ The following functional specifications are intended to outline all key requirem
    - **Thumbnail Generation**: Automatic thumbnail creation for preview purposes
    - **Storage Flexibility**: `storage_type` field supports seamless migration from local to cloud storage
    - **Access Control**: Images inherit task access permissions
+
 5. **Tag System**
 
    - Task Categorization: Tags provide metadata and additional context for tasks
@@ -69,9 +71,23 @@ The following functional specifications are intended to outline all key requirem
    - **UI Display**: Enum values are translated to user-friendly text in the interface
      - Database stores: `TO_DO`, `IN_PROGRESS`, `HIGH`
      - UI displays: `"To Do"`, `"En Progreso"`, `"Alta"` (based on user's language)
+
 7. **Development & Testing**
+
    - Comprehensive API documentation and testing coverage
    - Proper error handling and user feedback
+
+## User Roles & Permissions
+
+- **Admin**: Full project and user management capabilities
+- **Member**: Task assignment and project participation
+- **Project Admin**: Permission to define Kanban board settings (columns, tags, etc) for a specific project.
+- **Agents**:
+
+  - Provide functionality for users to manage their own agents and agent API credtntial (keys)
+  - Provide centeralized WARP.md, CLAUDE.md, etc file management per repo or per project.
+  - API access is restricted based on the project, agent credentials can not span multiple projects (security isolation)
+  - Security guidelines and documentation provided to the user when setting up agent credentials
 
 ## Technical Specifications
 
@@ -89,11 +105,6 @@ The following functional specifications are intended to outline all key requirem
 
 - **Development**: API-first approach, with endpoints to cover all functional areas
 - **Port**: APIs served on port 3030
-
-## User Roles & Permissions
-
-- **Admin**: Full project and user management capabilities
-- **Member**: Task assignment and project participation
 
 ## Licensing
 
