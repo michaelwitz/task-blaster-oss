@@ -19,6 +19,7 @@ In the OSS version, agents and users are granted access to use the management so
 ## Architecture
 
 - **Frontend**: React.js with JavaScript, Vite build tool
+- **UI Library**: Mantine Core components with hooks and modals
 - **Backend**: Fastify.js API server (JavaScript)
 - **Database**: PostgreSQL 15 with Drizzle ORM
 - **Containerization**: Docker Compose for easy deployment
@@ -242,11 +243,6 @@ npm run dev:api       # API only (port 3030)
 npm run dev:client    # Client only (port 3001)
 ```
 
-### Editor Integration
-
-- **Neovim/Vim**: Full support for editing project files
-- **Warp Terminal**: Enhanced experience with Vim keybindings available in Warp's input editor
-
 ### Production Build
 
 ```bash
@@ -321,33 +317,76 @@ VITE_API_URL=http://localhost:3030
 
 ## Production Deployment
 
+### Security Best Practices
+
+**IMPORTANT**: Never use `.env` files in production. Use your cloud provider's secrets management:
+
+- **AWS**: Use AWS Secrets Manager or Parameter Store
+- **Azure**: Use Azure Key Vault
+- **Google Cloud**: Use Secret Manager
+- **Heroku**: Use Config Vars in dashboard
+
 ### Environment Variables
 
-For production deployment, ensure these environment variables are properly configured:
+Configure these in your cloud provider's secrets management:
 
 ```bash
 # Required
-DATABASE_URL=postgres://username:password@host:port/database
+DATABASE_URL=postgres://username:password@host:port/task_blaster_prod
 NODE_ENV=production
 
 # Optional
 PORT=3030
-LOG_LEVEL=info
+LOG_LEVEL=warn
 ```
 
-### Cloud Deployment
+### AWS ECS Example
 
-1. **Set up a PostgreSQL database** in your cloud provider
-2. **Configure environment variables** in your cloud platform
-3. **Deploy the API** using your preferred method (Docker, Heroku, etc.)
-4. **Build and deploy the client** to a static hosting service
+In your ECS task definition, reference secrets:
+
+```json
+{
+  "containerDefinitions": [
+    {
+      "name": "task-blaster-api",
+      "image": "your-registry/task-blaster-api:latest",
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:region:account:secret:task-blaster/database-url"
+        },
+        {
+          "name": "NODE_ENV",
+          "valueFrom": "arn:aws:secretsmanager:region:account:secret:task-blaster/node-env"
+        }
+      ],
+      "environment": [
+        {"name": "PORT", "value": "3030"}
+      ]
+    }
+  ]
+}
+```
+
+### Cloud Deployment Steps
+
+1. **Set up PostgreSQL database** in your cloud provider (RDS, Cloud SQL, etc.)
+2. **Store secrets** in secrets manager (DATABASE_URL, etc.)
+3. **Build Docker image** and push to container registry
+4. **Configure container** to reference secrets from secrets manager
+5. **Deploy API** using ECS, App Engine, or equivalent
+6. **Build client** (`npm run build` in client/) 
+7. **Deploy client** to CDN/static hosting (S3+CloudFront, Netlify, Vercel, etc.)
 
 ### Security Considerations
 
-- **Never commit `.env` files** to version control
-- **Use strong, unique passwords** for database
-- **Enable HTTPS** in production
-- **Monitor database access** and implement proper backup strategies
+- ✅ Use secrets management (AWS Secrets Manager, Azure Key Vault, etc.)
+- ✅ Never commit `.env` files to version control
+- ✅ Use strong, unique passwords for production database
+- ✅ Enable HTTPS/TLS for all connections
+- ✅ Implement database backups and point-in-time recovery
+- ✅ Use production database naming convention: `task_blaster_prod`
+- ✅ Monitor and log all database access
 - **Rotate access tokens** periodically for security
 
 ## API Documentation
