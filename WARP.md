@@ -72,7 +72,19 @@ cd client && npm run lint
 ```
 
 ### Testing
-No test framework is currently configured. The package.json test script returns an error by default.
+```bash
+# API Integration Tests (Vitest + PactumJS)
+cd api
+npm run test              # Run all tests once
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Run tests with coverage
+
+# From project root
+npm run test             # Runs via workspace
+```
+
+Prerequisites: Docker Postgres running via `npm run docker:up:db`.
+Docs: See `api/__tests__/README.md` for setup, writing tests, and troubleshooting.
 
 ## Architecture
 
