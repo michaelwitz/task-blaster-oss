@@ -8,13 +8,17 @@ This directory contains API integration tests for Task Blaster using **Vitest** 
 - Node.js 22+
 - Docker (for PostgreSQL database)
 - Database container running: `npm run docker:up:db` from project root
+- Test database created and seeded (see Environment Setup below)
 
 ### Run Tests
 
 ```bash
-# From api/ directory
+# From api/ directory - MUST source .env first
+set -a && source .env && set +a && NODE_ENV=test npm run test
+
+# Or use npm scripts directly (after sourcing .env)
 npm run test              # Run all tests once
-npm run test:watch       # Run tests in watch mode (re-runs on file changes)
+npm run test:watch       # Run tests in watch mode
 npm run test:coverage    # Run tests with coverage report
 ```
 
@@ -23,6 +27,62 @@ npm run test:coverage    # Run tests with coverage report
 npm run test             # Runs tests via workspace
 npm run test:watch      # Watch mode via workspace
 ```
+
+## Environment Setup
+
+### Database Strategy
+
+Task Blaster uses **separate databases** for development and testing:
+
+| Database | Purpose | Cleared by Tests? |
+|----------|---------|------------------|
+| `task_blaster_dev` | Developer's working database | No |
+| `task_blaster_test` | Automated test suite | Yes (before each test) |
+
+**Key Point**: Tests use `DATABASE_URL_TEST` (not `DATABASE_URL`) to ensure complete isolation from your development data.
+
+### First-Time Setup
+
+```bash
+# 1. Create test database
+docker exec task_blaster_postgres psql -U postgres -c "CREATE DATABASE task_blaster_test;"
+
+# 2. Run migrations on test database
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:migrate
+
+# 3. Seed test database
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:seed
+
+# 4. Verify test database
+docker exec task_blaster_postgres psql -U postgres -d task_blaster_test -c "\dt"
+```
+
+### Resetting Test Database
+
+If tests fail or data becomes corrupted:
+
+```bash
+# Drop and recreate
+docker exec task_blaster_postgres psql -U postgres -c "DROP DATABASE task_blaster_test;"
+docker exec task_blaster_postgres psql -U postgres -c "CREATE DATABASE task_blaster_test;"
+
+# Migrate and seed
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:migrate
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:seed
+```
+
+### Safety Mechanisms
+
+Tests include **6 safety guards** to prevent accidental data deletion:
+
+1. **NODE_ENV check** - Must be `test` for destructive operations
+2. **DATABASE_URL_TEST validation** - Must point to `task_blaster_test` exactly
+3. **Runtime DB query** - Confirms connection to correct database
+4. **Startup validation** - Fails fast before running any tests
+5. **Per-operation validation** - Checks in `clearTaskData()` before deletes
+6. **Seed script guards** - Blocks seeding stage/prod databases
+
+If any check fails, tests exit immediately with a clear error message.
 
 ## Test Setup
 
@@ -33,6 +93,7 @@ Tests use:
 - **PactumJS**: API testing DSL with chainable request/response matchers
 - **Fastify**: API server running on loopback port 3031 during tests
 - **Docker PostgreSQL**: Real database for integration testing (port 5433)
+- **Separate test database**: `task_blaster_test` (isolated from dev)
 
 ### Setup Flow
 
@@ -194,6 +255,18 @@ beforeEach(async () => {
 
 ## Troubleshooting
 
+### Tests fail with "DATABASE_URL_TEST not set"
+You forgot to source the `.env` file:
+```bash
+set -a && source .env && set +a && NODE_ENV=test npm run test
+```
+
+### Tests fail with "SAFETY CHECK FAILED"
+The test database isn't set up correctly:
+1. Check `DATABASE_URL_TEST` points to `task_blaster_test` in `api/.env`
+2. Create test database: `docker exec task_blaster_postgres psql -U postgres -c "CREATE DATABASE task_blaster_test;"`
+3. Run migrations and seed (see Environment Setup above)
+
 ### Tests fail with "Task not found"
 Ensure database container is running: `npm run docker:up:db`
 
@@ -215,11 +288,20 @@ Increase timeout in `vitest.config.mjs` (line 9): `testTimeout: 20000`
 
 **File**: `api/.env`
 
-Required for tests:
+Required variables:
+```bash
+# Developer's working database (not touched by tests)
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_dev
+
+# Test database (used ONLY when NODE_ENV=test)
+# Cleared and re-seeded by tests - do not use for manual work
+DATABASE_URL_TEST=postgres://postgres:password@localhost:5433/task_blaster_test
 ```
-DATABASE_URL=postgres://user:password@localhost:5433/task_blaster
-NODE_ENV=test  # Optional, set for consistent test behavior
-```
+
+**How it works**:
+- Tests set `NODE_ENV=test` which triggers use of `DATABASE_URL_TEST`
+- Your dev database (`DATABASE_URL`) is never touched by tests
+- You must source the `.env` file before running tests: `set -a && source .env && set +a`
 
 **File**: `api/vitest.config.mjs`
 

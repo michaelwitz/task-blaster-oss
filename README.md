@@ -58,13 +58,19 @@ cd task-blaster-oss
 2. **Edit the environment file** (`api/.env`):
 
    ```bash
-   # Database connection (use the password from your existing container)
-   DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_db
+   # Developer's working database - for manual testing and exploration
+   DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_dev
+
+   # Test database - used ONLY by automated test suite (npm run test)
+   # This database is cleared and re-seeded by tests - do not use for manual work
+   DATABASE_URL_TEST=postgres://postgres:password@localhost:5433/task_blaster_test
 
    # Application settings
    NODE_ENV=development
    PORT=3030
    ```
+
+   **Note**: Task Blaster uses separate databases for development (`task_blaster_dev`) and testing (`task_blaster_test`) to prevent accidental data loss. See "Testing" section below for test database setup.
 
 3. **Set Docker environment variable** (optional, for production):
    ```bash
@@ -196,6 +202,37 @@ npm run docker:up:db  # Start only PostgreSQL database
 npm run docker:down   # Stop all containers
 npm run docker:logs   # View container logs
 ```
+
+### Testing
+
+```bash
+# From api/ directory - source .env first to load DATABASE_URL_TEST
+cd api
+set -a && source .env && set +a && NODE_ENV=test npm run test
+
+# Or use npm scripts (after sourcing .env)
+npm run test              # Run all tests once
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Run tests with coverage
+```
+
+**First-time test database setup**:
+
+```bash
+# 1. Create test database
+docker exec task_blaster_postgres psql -U postgres -c "CREATE DATABASE task_blaster_test;"
+
+# 2. Run migrations
+cd api
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:migrate
+
+# 3. Seed test database
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:seed
+```
+
+**Safety Note**: Tests automatically use `DATABASE_URL_TEST` (not `DATABASE_URL`) to keep your development data safe. The test database is cleared and re-seeded before each test run.
+
+For detailed testing documentation, see `api/__tests__/README.md`.
 
 ### Development Servers
 

@@ -13,6 +13,10 @@ dist
 .env
 .env.local
 .env.*.local
+api/.env
+api/.env.local
+# Keep example file tracked
+!api/.env.example
 
 # Editor directories and files
 .vscode/*

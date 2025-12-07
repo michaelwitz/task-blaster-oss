@@ -1,12 +1,64 @@
 import { db } from '../../lib/db/index.js';
 import { USERS, PROJECTS, TASKS, TAGS, TASK_TAGS } from '../../lib/db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
+
+/**
+ * Validates we're running against a test database
+ * @throws {Error} if not in test environment or wrong database
+ */
+export async function validateTestEnvironment() {
+  // Check 1: NODE_ENV must be 'test'
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error(
+      `SAFETY CHECK FAILED: Tests must run with NODE_ENV=test (current: ${process.env.NODE_ENV})\n` +
+      `Use: npm run test`
+    );
+  }
+
+  // Check 2: DATABASE_URL_TEST must be set and point to test database
+  const testDbUrl = process.env.DATABASE_URL_TEST;
+  if (!testDbUrl) {
+    throw new Error(
+      'SAFETY CHECK FAILED: DATABASE_URL_TEST not set\n' +
+      'Add DATABASE_URL_TEST to api/.env'
+    );
+  }
+
+  const testDbName = testDbUrl.split('/').pop()?.split('?')[0];
+  if (testDbName !== 'task_blaster_test') {
+    throw new Error(
+      `SAFETY CHECK FAILED: DATABASE_URL_TEST must point to 'task_blaster_test' (current: ${testDbName})\n` +
+      `Check api/.env configuration`
+    );
+  }
+
+  // Check 3: Query database to verify we're connected to test database
+  try {
+    const result = await db.execute(sql`SELECT current_database()`);
+    const currentDb = result[0]?.current_database;
+    
+    if (currentDb !== 'task_blaster_test') {
+      throw new Error(
+        `SAFETY CHECK FAILED: Connected to wrong database: ${currentDb}\n` +
+        `Expected: task_blaster_test`
+      );
+    }
+  } catch (error) {
+    if (error.message.includes('SAFETY CHECK FAILED')) {
+      throw error;
+    }
+    // If DB query fails for other reasons, log warning but continue
+    console.warn('Warning: Could not verify database name via query:', error.message);
+  }
+}
 
 /**
  * Clear all task-related data (but keep users/projects for faster tests)
  * Called before each test to ensure isolation
  */
 export async function clearTaskData() {
+  await validateTestEnvironment();
+  
   await db.delete(TASK_TAGS);
   await db.delete(TASKS);
 }

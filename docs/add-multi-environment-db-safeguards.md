@@ -1,7 +1,7 @@
 # Implementation Plan: Add Multi-Environment Database Safety Guards
 
 ## Overview
-Add environment-based database safeguards to prevent accidental data deletion in dev, stage, or production databases when running tests. This addresses a GitHub security issue where test helpers unconditionally delete data without validating the target environment.
+Add environment-based database safeguards to prevent accidental data deletion in dev, stage, or production databases when running tests. Introduces `DATABASE_URL_TEST` as an explicit test database variable, allowing developers to point `DATABASE_URL` at any environment (including prod for troubleshooting) while keeping tests completely isolated. This addresses a GitHub security issue where test helpers unconditionally delete data without validating the target environment.
 
 ## Problem Statement
 The test helper `clearTaskData()` unconditionally deletes all records from TASKS and TASK_TAGS tables without environment validation. This creates a risk of accidental data deletion if tests run against the wrong database (dev, stage, or prod).
@@ -15,12 +15,20 @@ The test helper `clearTaskData()` unconditionally deletes all records from TASKS
 
 ## Proposed Changes
 
-### 1. Database Naming Convention
+### 1. Database Naming Convention and Environment Variables
 Establish explicit database names for all environments:
 - **task_blaster_dev** - Local development database (developer's working DB)
 - **task_blaster_test** - Automated test database (cleared/seeded by tests)
 - **task_blaster_stage** - Staging environment (production-like, protected)
 - **task_blaster_prod** - Production (fully protected)
+
+**Key Design Decision:**
+- `DATABASE_URL` - Flexible connection for developers during normal work (can point to dev, stage, or prod for troubleshooting)
+- `DATABASE_URL_TEST` - Explicit test database only, used exclusively when `NODE_ENV=test`
+- When running tests (`npm run test`), code uses `DATABASE_URL_TEST` and ignores `DATABASE_URL`
+- Developer's normal workflow (`npm run dev`) uses `DATABASE_URL` with `NODE_ENV=development`
+- Both variables live in the same `.env` file so developers always have access to both databases
+- This allows safe production troubleshooting without risking accidental test runs against prod
 
 ### 2. Create Separate Test Database
 Create a dedicated test database alongside the existing dev database:
@@ -35,9 +43,18 @@ docker exec task_blaster_postgres psql -U postgres -c "CREATE DATABASE task_blas
 
 ### 3. Environment-Specific Configuration Files
 
-#### api/.env.development (rename existing `.env`)
+**Important:** Developers work with a single `api/.env` file that contains BOTH `DATABASE_URL` and `DATABASE_URL_TEST`.
+
+#### api/.env (developer's main file)
 ```bash
+# Developer's working database - for manual testing, exploration, or troubleshooting
+# You may point this at dev, stage, or even prod (read-only troubleshooting)
 DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_dev
+
+# Test database - used ONLY by automated test suite (npm run test)
+# This database is cleared and re-seeded by tests - do not use for manual work
+DATABASE_URL_TEST=postgres://postgres:password@localhost:5433/task_blaster_test
+
 NODE_ENV=development
 PORT=3030
 DB_POOL_MIN=2
@@ -45,19 +62,17 @@ DB_POOL_MAX=10
 LOG_LEVEL=info
 ```
 
-#### api/.env.test (new file)
-```bash
-DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test
-NODE_ENV=test
-PORT=3031
-DB_POOL_MIN=2
-DB_POOL_MAX=10
-LOG_LEVEL=warn
-```
 
 #### api/.env.example (update)
 ```bash
+# Developer's working database - for manual testing, exploration, or troubleshooting
+# You may point this at dev, stage, or even prod (read-only troubleshooting)
 DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_dev
+
+# Test database - used ONLY by automated test suite (npm run test)
+# This database is cleared and re-seeded by tests - do not use for manual work
+DATABASE_URL_TEST=postgres://postgres:password@localhost:5433/task_blaster_test
+
 NODE_ENV=development
 PORT=3030
 DB_POOL_MIN=2
@@ -69,7 +84,7 @@ LOG_LEVEL=info
 
 **File**: `api/lib/db/index.js`
 
-Add dotenv configuration to load environment-specific files:
+Add dotenv configuration to load environment-specific files and use DATABASE_URL_TEST for tests:
 
 ```javascript
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -85,9 +100,22 @@ dotenv.config({ path: resolve(process.cwd(), envFile) });
 // Fallback to .env if environment-specific file not found
 dotenv.config();
 
-// Database connection with explicit fallback
-const connectionString = process.env.DATABASE_URL || 
-  'postgres://postgres:password@localhost:5433/task_blaster_dev';
+// For tests, use DATABASE_URL_TEST; otherwise use DATABASE_URL
+// This allows developers to point DATABASE_URL at prod for troubleshooting
+// while keeping tests isolated to the test database
+let connectionString;
+if (nodeEnv === 'test') {
+  connectionString = process.env.DATABASE_URL_TEST;
+  if (!connectionString) {
+    throw new Error(
+      'DATABASE_URL_TEST not set. Tests require explicit test database configuration.\n' +
+      'Add DATABASE_URL_TEST to api/.env.test and api/.env.development'
+    );
+  }
+} else {
+  connectionString = process.env.DATABASE_URL || 
+    'postgres://postgres:password@localhost:5433/task_blaster_dev';
+}
 
 // Create postgres client
 const client = postgres(connectionString);
@@ -120,28 +148,46 @@ export async function validateTestEnvironment() {
     );
   }
 
-  // Check 2: DATABASE_URL must contain 'task_blaster_test'
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
-    throw new Error('SAFETY CHECK FAILED: DATABASE_URL not set');
+  // Check 2: DATABASE_URL_TEST must be set and point to test database
+  const testDbUrl = process.env.DATABASE_URL_TEST;
+  if (!testDbUrl) {
+    throw new Error(
+      'SAFETY CHECK FAILED: DATABASE_URL_TEST not set\n' +
+      'Add DATABASE_URL_TEST to api/.env.development and api/.env.test'
+    );
   }
 
-  const dbName = dbUrl.split('/').pop()?.split('?')[0];
-  if (dbName !== 'task_blaster_test') {
+  const testDbName = testDbUrl.split('/').pop()?.split('?')[0];
+  if (testDbName !== 'task_blaster_test') {
     throw new Error(
-      `SAFETY CHECK FAILED: DATABASE_URL must point to 'task_blaster_test' (current: ${dbName})\n` +
+      `SAFETY CHECK FAILED: DATABASE_URL_TEST must point to 'task_blaster_test' (current: ${testDbName})\n` +
       `Check api/.env.test configuration`
     );
   }
 
-  // Check 3: Query database to verify connection
+  // Check 3: When in test mode, DATABASE_URL should match DATABASE_URL_TEST
+  const dbUrl = process.env.DATABASE_URL;
+  if (dbUrl && dbUrl !== testDbUrl) {
+    console.warn(
+      `⚠️  WARNING: DATABASE_URL (${dbUrl}) differs from DATABASE_URL_TEST (${testDbUrl})\n` +
+      '   Tests will use DATABASE_URL_TEST'
+    );
+  }
+
+  // Check 4: Query database to verify connection (uses DATABASE_URL_TEST)
   try {
-    const result = await db.execute(sql`SELECT current_database()`);
+    // Temporarily connect using DATABASE_URL_TEST to verify
+    const testClient = postgres(testDbUrl);
+    const testDb = drizzle(testClient);
+    
+    const result = await testDb.execute(sql`SELECT current_database()`);
     const currentDb = result.rows[0]?.current_database;
+    
+    await testClient.end();
     
     if (currentDb !== 'task_blaster_test') {
       throw new Error(
-        `SAFETY CHECK FAILED: Connected to wrong database: ${currentDb}\n` +
+        `SAFETY CHECK FAILED: DATABASE_URL_TEST connects to wrong database: ${currentDb}\n` +
         `Expected: task_blaster_test`
       );
     }
@@ -191,16 +237,16 @@ if (process.env.NODE_ENV !== 'test') {
   process.exit(1);
 }
 
-// Validate DATABASE_URL contains 'task_blaster_test'
-const dbUrl = process.env.DATABASE_URL || '';
-const dbName = dbUrl.split('/').pop()?.split('?')[0];
-if (dbName !== 'task_blaster_test') {
+// Validate DATABASE_URL_TEST is set and points to test database
+const testDbUrl = process.env.DATABASE_URL_TEST || '';
+const testDbName = testDbUrl.split('/').pop()?.split('?')[0];
+if (testDbName !== 'task_blaster_test') {
   console.error(
     '\x1b[31m%s\x1b[0m', // Red color
-    '\n❌ SAFETY CHECK FAILED: DATABASE_URL must point to test database\n' +
-    `   Current database: ${dbName}\n` +
+    '\n❌ SAFETY CHECK FAILED: DATABASE_URL_TEST must point to test database\n' +
+    `   Current: ${testDbName}\n` +
     `   Expected: task_blaster_test\n` +
-    `   Check: api/.env.test\n`
+    `   Check: api/.env.test and api/.env.development\n`
   );
   process.exit(1);
 }
@@ -306,14 +352,13 @@ Ensure environment files are properly handled:
 ```gitignore
 # Environment files
 api/.env
-api/.env.development
-api/.env.test
 api/.env.local
-api/.env.*.local
 
 # Keep example file tracked
 !api/.env.example
 ```
+
+**Note:** CI/CD environments (GitHub Actions, AWS) use secrets management and environment variables, not `.env` files.
 
 ### 10. Create Setup Script for Test Database
 
@@ -451,23 +496,16 @@ If any check fails, tests will exit immediately with a clear error message.
 - Run `npm run db:setup:test` to create test database
 ```
 
-## Environment Protection Matrix
-
-| Environment | Database Name | NODE_ENV | Destructive Ops | Protected By |
-|------------|---------------|----------|-----------------|--------------|
-| Development | task_blaster_dev | development | Manual only | Seed script checks |
-| Test | task_blaster_test | test | Automated (tests) | All 6 guard layers |
-| Staging | task_blaster_stage | production | Blocked | All guards + no test ENV |
-| Production | task_blaster_prod | production | Blocked | All guards + no test ENV |
 
 ## Safety Guard Layers
 
 1. **NODE_ENV check** - Must be `test` for destructive test operations
-2. **Database name validation** - Must be exactly `task_blaster_test`
-3. **Runtime DB query** - Confirm connected to correct database via `SELECT current_database()`
-4. **Startup validation** - Fail fast in test setup (`setup.pactum.mjs`) before any tests run
-5. **Per-operation validation** - Check in `clearTaskData()` and similar helper functions
-6. **Seed script guards** - Block seeding stage/prod, require dev/test only
+2. **DATABASE_URL_TEST validation** - Must be set and point to `task_blaster_test` exactly
+3. **Database isolation** - Tests use DATABASE_URL_TEST, never DATABASE_URL (allows prod troubleshooting)
+4. **Runtime DB query** - Confirm connected to correct database via `SELECT current_database()`
+5. **Startup validation** - Fail fast in test setup (`setup.pactum.mjs`) before any tests run
+6. **Per-operation validation** - Check in `clearTaskData()` and similar helper functions
+7. **Seed script guards** - Block seeding stage/prod, require dev/test only
 
 ## Migration Path for Existing Databases
 
@@ -483,15 +521,8 @@ docker exec task_blaster_postgres psql -U postgres -c "CREATE DATABASE task_blas
 # 3. Update local environment file
 mv api/.env api/.env.development
 
-# 4. Create test environment file
-cat > api/.env.test << EOF
-DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test
-NODE_ENV=test
-PORT=3031
-DB_POOL_MIN=2
-DB_POOL_MAX=10
-LOG_LEVEL=warn
-EOF
+# 4. DATABASE_URL_TEST already added to .env in step 3
+# No separate .env.test file needed - CI/CD uses secrets management
 
 # 5. Run migrations on test database
 NODE_ENV=test npm run db:migrate
@@ -505,12 +536,14 @@ npm run test
 
 ### CI/CD Configuration
 
-For GitHub Actions or other CI/CD:
+For GitHub Actions:
 
 ```yaml
 env:
   NODE_ENV: test
-  DATABASE_URL: postgres://postgres:password@localhost:5432/task_blaster_test
+  DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
+  # Or hardcode for test DB:
+  # DATABASE_URL_TEST: postgres://postgres:password@localhost:5432/task_blaster_test
   
 services:
   postgres:
@@ -520,6 +553,10 @@ services:
       POSTGRES_DB: task_blaster_test
 ```
 
+For AWS (Lambda, ECS, etc.):
+- Use **Secrets Manager** or **Parameter Store** for DATABASE_URL_TEST
+- Set NODE_ENV=test in environment configuration
+
 ## Implementation Checklist
 
 ### Step 1: Database Setup
@@ -528,8 +565,7 @@ services:
 - [ ] Verify both databases exist in Docker
 
 ### Step 2: Environment Configuration
-- [ ] Rename `api/.env` to `api/.env.development`
-- [ ] Create `api/.env.test` with test database URL
+- [ ] Update `api/.env` with DATABASE_URL_TEST
 - [ ] Update `api/.env.example` with new naming convention
 - [ ] Update `.gitignore` for environment files
 

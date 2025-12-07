@@ -75,6 +75,11 @@ cd client && npm run lint
 ```bash
 # API Integration Tests (Vitest + PactumJS)
 cd api
+
+# Source .env and run tests (loads DATABASE_URL_TEST)
+set -a && source .env && set +a && NODE_ENV=test npm run test
+
+# Or use npm scripts directly (but must source .env first)
 npm run test              # Run all tests once
 npm run test:watch       # Run tests in watch mode
 npm run test:coverage    # Run tests with coverage
@@ -83,7 +88,11 @@ npm run test:coverage    # Run tests with coverage
 npm run test             # Runs via workspace
 ```
 
-Prerequisites: Docker Postgres running via `npm run docker:up:db`.
+**Prerequisites**: 
+1. Docker Postgres running via `npm run docker:up:db`
+2. Test database setup (see Environment Strategy below)
+3. Source `api/.env` before running tests to load environment variables
+
 Docs: See `api/__tests__/README.md` for setup, writing tests, and troubleshooting.
 
 ## Architecture
@@ -190,10 +199,79 @@ Every request gets a correlation ID (`x-correlation-id` header) for log tracing.
 - Always seed tags before tasks (tag references must exist)
 
 ### Environment Configuration
-- API: `api/.env` with `DATABASE_URL`, `NODE_ENV`, `PORT`, `LOG_LEVEL`
+- API: `api/.env` with `DATABASE_URL`, `DATABASE_URL_TEST`, `NODE_ENV`, `PORT`, `LOG_LEVEL`
 - Client: Vite environment variables with `VITE_` prefix (e.g., `VITE_API_URL`)
 - Docker: `POSTGRES_PASSWORD` env var (defaults to "password")
 - Never commit `.env` files
+
+## Environment Strategy
+
+Task Blaster uses explicit database naming and environment variables for safety:
+
+### Database Naming Convention
+| Environment | Database Name | NODE_ENV | Usage |
+|-------------|---------------|----------|-------|
+| Development | `task_blaster_dev` | development | Local development, manual testing |
+| Test | `task_blaster_test` | test | Automated test suite (cleared/reseeded by tests) |
+| Staging | `task_blaster_stage` | production | Pre-production testing (protected) |
+| Production | `task_blaster_prod` | production | Live application (protected) |
+
+### Environment Variables
+The `api/.env` file contains BOTH database URLs:
+
+```bash
+# Developer's working database - flexible, can point to dev, stage, or even prod for troubleshooting
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_dev
+
+# Test database - used ONLY when NODE_ENV=test
+# This database is cleared and re-seeded by tests - do not use for manual work
+DATABASE_URL_TEST=postgres://postgres:password@localhost:5433/task_blaster_test
+```
+
+### How It Works
+- **Normal development** (`npm run dev`): Uses `DATABASE_URL` (task_blaster_dev)
+- **Running tests** (`NODE_ENV=test npm run test`): Uses `DATABASE_URL_TEST` (task_blaster_test)
+- Developer can point `DATABASE_URL` at any environment for troubleshooting
+- Tests are always isolated to `task_blaster_test` via `DATABASE_URL_TEST`
+
+### Safety Guards
+Multiple layers prevent accidental data deletion:
+
+1. **NODE_ENV check** - Tests must run with `NODE_ENV=test`
+2. **DATABASE_URL_TEST validation** - Must point to `task_blaster_test` exactly
+3. **Runtime DB query** - Confirms connection to correct database
+4. **Startup validation** - Fails fast in test setup before any tests run
+5. **Per-operation validation** - Checks in `clearTaskData()` before deletes
+6. **Seed script guards** - Blocks seeding stage/prod, only allows dev/test
+
+### Setting Up Test Database
+```bash
+# Create test database (first time only)
+docker exec task_blaster_postgres psql -U postgres -c "CREATE DATABASE task_blaster_test;"
+
+# Run migrations on test database
+cd api
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:migrate
+
+# Seed test database
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:seed
+
+# Verify test database
+docker exec task_blaster_postgres psql -U postgres -d task_blaster_test -c "\dt"
+```
+
+### Resetting Test Database
+Tests can wipe and recreate the test database as needed:
+```bash
+# Drop and recreate test database
+docker exec task_blaster_postgres psql -U postgres -c "DROP DATABASE task_blaster_test;"
+docker exec task_blaster_postgres psql -U postgres -c "CREATE DATABASE task_blaster_test;"
+
+# Migrate and seed
+cd api
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:migrate
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_test npm run db:seed
+```
 
 ## Internationalization (i18n)
 

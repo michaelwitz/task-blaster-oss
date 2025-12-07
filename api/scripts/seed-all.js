@@ -4,6 +4,33 @@ import { seedTags } from './seeders/seedTags.js';
 import { seedTasks } from './seeders/seedTasks.js';
 import { seedTaskTags } from './seeders/seedTaskTags.js';
 
+// Safety check: Prevent seeding production
+if (process.env.NODE_ENV === 'production') {
+  console.error(
+    '\x1b[31m%s\x1b[0m',
+    '\n❌ SAFETY CHECK FAILED: Cannot seed production database\n' +
+    '   NODE_ENV=production detected\n'
+  );
+  process.exit(1);
+}
+
+// Safety check: Validate database name
+const dbUrl = process.env.DATABASE_URL || '';
+const dbName = dbUrl.split('/').pop()?.split('?')[0];
+
+const allowedDatabases = ['task_blaster_dev', 'task_blaster_test'];
+if (!allowedDatabases.includes(dbName)) {
+  console.error(
+    '\x1b[31m%s\x1b[0m',
+    '\n❌ SAFETY CHECK FAILED: Cannot seed this database\n' +
+    `   Current database: ${dbName}\n` +
+    `   Allowed: ${allowedDatabases.join(', ')}\n`
+  );
+  process.exit(1);
+}
+
+console.log(`✅ Safety check passed. Seeding database: ${dbName}`);
+
 async function seedAll() {
   try {
     console.log('🌱 Seeding database data in correct order...');

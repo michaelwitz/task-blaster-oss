@@ -16,9 +16,9 @@
     "db:push": "drizzle-kit push",
     "db:seed": "node scripts/seed-all.js",
     "db:reset": "node scripts/reset-and-seed.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "NODE_ENV=test vitest run",
+    "test:watch": "NODE_ENV=test vitest",
+    "test:coverage": "NODE_ENV=test vitest run --coverage"
   },
   "repository": {
     "type": "git",
