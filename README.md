@@ -258,10 +258,13 @@ The `docker-compose.yml` file defines three main services:
 1. **postgres** (Database):
 
    - PostgreSQL 15 container
+   - **Container name**: `task_blaster_postgres` (what you see in Docker Desktop)
    - Port: 5433 (mapped from container 5432)
-   - Database: `task_blaster_db`
+   - **Database names**: Configurable (developers typically use `task_blaster_dev` and `task_blaster_test`)
    - User: `postgres`
    - Password: `password` (configurable via `POSTGRES_PASSWORD` env var)
+
+   **Note**: The database names are recommendations for local development safety. Production users can name their database anything (e.g., `task_blaster_db`, `task_blaster_prod`, etc.).
 
 2. **api** (Backend):
 
@@ -300,20 +303,27 @@ docker-compose down -v
 
 ### Environment Variables
 
-The Docker setup uses these environment variables:
-
+**When running API locally** (not in Docker):
 ```bash
-# Database password (default: password)
-POSTGRES_PASSWORD=your_secure_password
+# From host machine connecting to Docker postgres container (task_blaster_postgres)
+DATABASE_URL=postgres://postgres:password@localhost:5433/task_blaster_dev
+DATABASE_URL_TEST=postgres://postgres:password@localhost:5433/task_blaster_test
+NODE_ENV=development
+PORT=3030
+```
 
-# API configuration
-DATABASE_URL=postgres://postgres:password@postgres:5432/task_blaster_db
+**When running full Docker Compose** (API inside container):
+```bash
+# Container-to-container networking (use service name 'postgres', not 'localhost')
+DATABASE_URL=postgres://postgres:password@postgres:5432/task_blaster_dev
 NODE_ENV=development
 PORT=3030
 
 # Client configuration
 VITE_API_URL=http://localhost:3030
 ```
+
+**Note**: Database names (`task_blaster_dev`, `task_blaster_test`) are conventions for developer safety. You can use any database name you prefer (e.g., `task_blaster_db`, `myapp_db`, etc.).
 
 ## Production Deployment
 
@@ -416,10 +426,6 @@ The OSS version uses UUID-based token authentication:
 4. Push to your branch: `git push origin feature/your-feature`
 5. Create a pull request
 
-## License
-
-This project is licensed under the ISC License.
-
 ## Support
 
 For the OSS version:
@@ -448,7 +454,8 @@ task-blaster-oss/
 
 ### Technology Stack
 
-- **Frontend**: React 18, JavaScript, Vite, Tailwind CSS
+- **Frontend**: React 18, JavaScript, Vite
+- **UI Library**: Mantine Core components
 - **Backend**: Fastify.js, JavaScript, PostgreSQL, Drizzle ORM
 - **Development**: Docker Compose, Node.js 22+
 - **Authentication**: UUID-based access tokens
@@ -457,3 +464,7 @@ task-blaster-oss/
 ---
 
 **Note**: This is the OSS version with manual user management. The paid version will include enterprise-grade user and agent management features.
+
+## License
+
+This project is licensed under the ISC License. See the [LICENSE](LICENSE) file for details.
