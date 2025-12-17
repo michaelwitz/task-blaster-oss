@@ -1,4 +1,5 @@
-import { pgTable, serial, varchar, text, timestamp, integer, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, timestamp, integer, boolean, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 
 // Users table - using integer sequence as primary key (best practice for scalability)
@@ -18,6 +19,27 @@ export const TAGS = pgTable('TAGS', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Status Definitions table - instance-level status codes
+export const STATUS_DEFINITIONS = pgTable('STATUS_DEFINITIONS', {
+  code: varchar('code', { length: 25 }).primaryKey(),
+  description: varchar('description', { length: 200 }),
+  created_by: integer('created_by').references(() => USERS.id, { onDelete: 'set null' }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_by: integer('updated_by').references(() => USERS.id, { onDelete: 'set null' }),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+// Translations table - stores all UI translations as JSONB
+export const TRANSLATIONS = pgTable('TRANSLATIONS', {
+  id: serial('id').primaryKey(),
+  language_code: varchar('language_code', { length: 5 }).notNull().unique(),
+  translations: text('translations').notNull(), // JSONB stored as text
+  created_by: integer('created_by').references(() => USERS.id, { onDelete: 'set null' }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_by: integer('updated_by').references(() => USERS.id, { onDelete: 'set null' }),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
 // Projects table
 export const PROJECTS = pgTable('PROJECTS', {
   id: serial('id').primaryKey(),
@@ -26,7 +48,10 @@ export const PROJECTS = pgTable('PROJECTS', {
   description: text('description'),
   leader_id: integer('leader_id').notNull().references(() => USERS.id, { onDelete: 'restrict' }),
   next_task_sequence: integer('next_task_sequence').notNull().default(1),
+  status_workflow: varchar('status_workflow', { length: 25 }).array().notNull().default(sql`ARRAY['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']::varchar[]`),
+  created_by: integer('created_by').references(() => USERS.id, { onDelete: 'set null' }),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updated_by: integer('updated_by').references(() => USERS.id, { onDelete: 'set null' }),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

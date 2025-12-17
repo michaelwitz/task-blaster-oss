@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1754334760768,
-      "tag": "0000_faulty_madame_masque",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1765125823105,
-      "tag": "0001_naive_sunspot",
+      "when": 1765930304601,
+      "tag": "0000_quiet_silvermane",
       "breakpoints": true
     }
   ]

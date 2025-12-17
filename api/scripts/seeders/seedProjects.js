@@ -10,19 +10,25 @@ export async function seedProjects() {
         title: 'Website Redesign', 
         code: 'WEBRED', 
         description: 'Complete overhaul of company website with modern design',
-        leader_id: 1 
+        leader_id: 1,
+        status_workflow: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'],
+        created_by: 1
       },
       { 
         title: 'Mobile App Development', 
         code: 'MOBDEV', 
         description: 'Native mobile app for iOS and Android platforms',
-        leader_id: 2 
+        leader_id: 2,
+        status_workflow: ['TO_DO', 'IN_PROGRESS', 'TESTING', 'DONE'],
+        created_by: 2
       },
       { 
         title: 'API Modernization', 
         code: 'APIMOD', 
         description: 'Migrate legacy APIs to modern REST architecture',
-        leader_id: 3 
+        leader_id: 3,
+        status_workflow: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_DEPLOY', 'DONE'],
+        created_by: 3
       }
     ]);
     

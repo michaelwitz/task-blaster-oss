@@ -1,5 +1,5 @@
 {
-  "id": "8e2d4f3e-a65f-4ad1-b1b4-3efc79bb3057",
+  "id": "2dea46ab-6066-442c-9654-9c01196ba399",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -167,12 +167,31 @@
           "notNull": true,
           "default": 1
         },
+        "status_workflow": {
+          "name": "status_workflow",
+          "type": "varchar(25)[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "ARRAY['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']::varchar[]"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
@@ -196,6 +215,32 @@
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
+        },
+        "PROJECTS_created_by_USERS_id_fk": {
+          "name": "PROJECTS_created_by_USERS_id_fk",
+          "tableFrom": "PROJECTS",
+          "tableTo": "USERS",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "PROJECTS_updated_by_USERS_id_fk": {
+          "name": "PROJECTS_updated_by_USERS_id_fk",
+          "tableFrom": "PROJECTS",
+          "tableTo": "USERS",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -208,6 +253,84 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.STATUS_DEFINITIONS": {
+      "name": "STATUS_DEFINITIONS",
+      "schema": "",
+      "columns": {
+        "code": {
+          "name": "code",
+          "type": "varchar(25)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "STATUS_DEFINITIONS_created_by_USERS_id_fk": {
+          "name": "STATUS_DEFINITIONS_created_by_USERS_id_fk",
+          "tableFrom": "STATUS_DEFINITIONS",
+          "tableTo": "USERS",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "STATUS_DEFINITIONS_updated_by_USERS_id_fk": {
+          "name": "STATUS_DEFINITIONS_updated_by_USERS_id_fk",
+          "tableFrom": "STATUS_DEFINITIONS",
+          "tableTo": "USERS",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -277,7 +400,7 @@
           "type": "varchar(20)",
           "primaryKey": false,
           "notNull": true,
-          "default": "'todo'"
+          "default": "'TO_DO'"
         },
         "position": {
           "name": "position",
@@ -297,7 +420,7 @@
           "type": "varchar(20)",
           "primaryKey": false,
           "notNull": true,
-          "default": "'Medium'"
+          "default": "'MEDIUM'"
         },
         "assignee_id": {
           "name": "assignee_id",
@@ -321,6 +444,18 @@
         "blocked_reason": {
           "name": "blocked_reason",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "git_feature_branch": {
+          "name": "git_feature_branch",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "git_pull_request_url": {
+          "name": "git_pull_request_url",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
@@ -446,6 +581,98 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.TRANSLATIONS": {
+      "name": "TRANSLATIONS",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "language_code": {
+          "name": "language_code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "translations": {
+          "name": "translations",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "TRANSLATIONS_created_by_USERS_id_fk": {
+          "name": "TRANSLATIONS_created_by_USERS_id_fk",
+          "tableFrom": "TRANSLATIONS",
+          "tableTo": "USERS",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "TRANSLATIONS_updated_by_USERS_id_fk": {
+          "name": "TRANSLATIONS_updated_by_USERS_id_fk",
+          "tableFrom": "TRANSLATIONS",
+          "tableTo": "USERS",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "TRANSLATIONS_language_code_unique": {
+          "name": "TRANSLATIONS_language_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "language_code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.USERS": {
       "name": "USERS",
       "schema": "",
@@ -464,6 +691,12 @@
         },
         "email": {
           "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
@@ -492,6 +725,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "email"
+          ]
+        },
+        "USERS_access_token_unique": {
+          "name": "USERS_access_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "access_token"
           ]
         }
       },

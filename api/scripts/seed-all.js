@@ -1,8 +1,11 @@
 import { seedUsers } from './seeders/seedUsers.js';
+import { seedStatusDefinitions } from './seeders/seedStatusDefinitions.js';
+import { seedTranslations } from './seeders/seedTranslations.js';
 import { seedProjects } from './seeders/seedProjects.js';
 import { seedTags } from './seeders/seedTags.js';
 import { seedTasks } from './seeders/seedTasks.js';
 import { seedTaskTags } from './seeders/seedTaskTags.js';
+import { client } from '../lib/db/index.js';
 
 // Safety check: Prevent seeding production
 if (process.env.NODE_ENV === 'production') {
@@ -39,6 +42,8 @@ async function seedAll() {
     // Step 1: Seed independent tables first (no foreign keys)
     console.log('📋 Step 1: Seeding base entities...');
     await seedUsers();
+    await seedStatusDefinitions();
+    await seedTranslations();
     await seedTags();
     console.log('');
 
@@ -60,6 +65,8 @@ async function seedAll() {
     console.log('✅ Database seeding completed successfully!');
     console.log('📊 Summary:');
     console.log('   • 4 users created');
+    console.log('   • 8 status definitions created');
+    console.log('   • 4 translation sets created (en, es, fr, de)');
     console.log('   • 3 projects created');
     console.log('   • 6 tags created');
     console.log('   • 5 tasks created');
@@ -68,7 +75,11 @@ async function seedAll() {
   } catch (error) {
     console.error('❌ Error seeding data:', error.message);
     console.error('🔍 Full error:', error);
+    await client.end();
     process.exit(1);
+  } finally {
+    // Close database connection
+    await client.end();
   }
 }
 

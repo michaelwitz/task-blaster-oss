@@ -24,3 +24,6 @@ const client = postgres(connectionString);
 // Create drizzle instance
 export const db = drizzle(client);
 
+// Export client for cleanup
+export { client };
+
