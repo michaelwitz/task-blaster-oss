@@ -32,7 +32,14 @@ export async function seedTranslations() {
       ICEBOX: 'Tasks that are deprioritized or on hold'
     };
     
+    // Ensure statuses object exists
+    if (!enTranslations.tasks.statuses) enTranslations.tasks.statuses = {};
+    
     // Add new statuses to existing status labels
+    enTranslations.tasks.statuses.TO_DO = 'To Do';
+    enTranslations.tasks.statuses.IN_PROGRESS = 'In Progress';
+    enTranslations.tasks.statuses.IN_REVIEW = 'In Review';
+    enTranslations.tasks.statuses.DONE = 'Done';
     enTranslations.tasks.statuses.TESTING = 'Testing';
     enTranslations.tasks.statuses.AWAITING_APPROVAL = 'Awaiting Approval';
     enTranslations.tasks.statuses.READY_FOR_DEPLOY = 'Ready for Deploy';
@@ -49,6 +56,14 @@ export async function seedTranslations() {
       ICEBOX: 'Tareas despriorizadas o en espera'
     };
     
+    // Ensure statuses object exists
+    if (!esTranslations.tasks.statuses) esTranslations.tasks.statuses = {};
+    
+    // Add all statuses
+    esTranslations.tasks.statuses.TO_DO = 'Por Hacer';
+    esTranslations.tasks.statuses.IN_PROGRESS = 'En Progreso';
+    esTranslations.tasks.statuses.IN_REVIEW = 'En Revisión';
+    esTranslations.tasks.statuses.DONE = 'Completado';
     esTranslations.tasks.statuses.TESTING = 'Pruebas';
     esTranslations.tasks.statuses.AWAITING_APPROVAL = 'En Espera de Aprobación';
     esTranslations.tasks.statuses.READY_FOR_DEPLOY = 'Listo para Desplegar';
@@ -65,6 +80,14 @@ export async function seedTranslations() {
       ICEBOX: 'Tâches déprioritarisées ou en attente'
     };
     
+    // Ensure statuses object exists
+    if (!frTranslations.tasks.statuses) frTranslations.tasks.statuses = {};
+    
+    // Add all statuses
+    frTranslations.tasks.statuses.TO_DO = 'À Faire';
+    frTranslations.tasks.statuses.IN_PROGRESS = 'En Cours';
+    frTranslations.tasks.statuses.IN_REVIEW = 'En Révision';
+    frTranslations.tasks.statuses.DONE = 'Terminé';
     frTranslations.tasks.statuses.TESTING = 'Tests';
     frTranslations.tasks.statuses.AWAITING_APPROVAL = 'En Attente d\'Approbation';
     frTranslations.tasks.statuses.READY_FOR_DEPLOY = 'Prêt pour le Déploiement';
@@ -81,6 +104,14 @@ export async function seedTranslations() {
       ICEBOX: 'Zurückgestellte oder pausierte Aufgaben'
     };
     
+    // Ensure statuses object exists
+    if (!deTranslations.tasks.statuses) deTranslations.tasks.statuses = {};
+    
+    // Add all statuses
+    deTranslations.tasks.statuses.TO_DO = 'Zu Erledigen';
+    deTranslations.tasks.statuses.IN_PROGRESS = 'In Bearbeitung';
+    deTranslations.tasks.statuses.IN_REVIEW = 'In Überprüfung';
+    deTranslations.tasks.statuses.DONE = 'Erledigt';
     deTranslations.tasks.statuses.TESTING = 'Testen';
     deTranslations.tasks.statuses.AWAITING_APPROVAL = 'Wartet auf Genehmigung';
     deTranslations.tasks.statuses.READY_FOR_DEPLOY = 'Bereit für Bereitstellung';

@@ -29,11 +29,12 @@ import {
   IconArrowLeft
 } from '@tabler/icons-react';
 import { TokenModal } from './components/TokenModal.jsx';
+import { ProjectModal } from './components/ProjectModal.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { KanbanPage } from './pages/KanbanPage.jsx';
 import { useTranslation } from './hooks/useTranslation.js';
+import i18n from './i18n/index.js';
 import '@mantine/core/styles.css';
-import './i18n/index.js';
 
 function AppContent() {
   const { t, i18n } = useTranslation();
@@ -51,7 +52,12 @@ function AppContent() {
   const [loading, setLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [opened, { open, close }] = useDisclosure(false);
+  const [projectModalOpened, setProjectModalOpened] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);  // null for create, project object for edit
+  const [users, setUsers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [createTaskModalOpened, setCreateTaskModalOpened] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [newTask, setNewTask] = useState({
     title: '',
     prompt: '',
@@ -70,6 +76,65 @@ function AppContent() {
       default: return 'en-US';
     }
   };
+
+  // Load API translations and merge with static translations
+  const loadApiTranslations = async (language) => {
+    // Prevent loading if we already have the resource bundle and it's not empty
+    if (i18n.hasResourceBundle(language, 'translation')) {
+        // If it was already loaded, we might skip. However, standard react-i18next doesn't expose
+        // easy way to check if it's "fully" loaded or just static. 
+        // We'll rely on a simple module-level or component-level flag if needed,
+        // but for now, checking if we have a flag in memory is better.
+        // Let's use a simple state or ref check to avoid duplicate calls for same session.
+    }
+
+    const token = localStorage.getItem('TB_TOKEN');
+    if (!token) {
+      console.log('No token available, skipping API translation loading');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3030/translations/${language}`, {
+        method: 'GET',
+        headers: {
+          'TB_TOKEN': token,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Merge API translations into i18n
+        i18n.addResourceBundle(language, 'translation', data.translations, true, true);
+        console.log(`Loaded ${language} translations from API`);
+      } else {
+        console.warn(`Failed to load ${language} translations from API:`, response.status);
+      }
+    } catch (error) {
+      console.error(`Error loading ${language} translations from API:`, error);
+    }
+  };
+
+  // Effect to load translations when language or token changes
+  useEffect(() => {
+    if (accessToken) {
+        const currentLang = i18n.language.split('-')[0];
+        loadApiTranslations(currentLang);
+    }
+    
+    const handleLanguageChanged = (lng) => {
+        if (accessToken) {
+            const langCode = lng.split('-')[0];
+            loadApiTranslations(langCode);
+        }
+    };
+
+    i18n.on('languageChanged', handleLanguageChanged);
+    return () => {
+        i18n.off('languageChanged', handleLanguageChanged);
+    };
+  }, [accessToken, i18n]);
 
   // Fetch projects with a specific token
   const fetchProjectsWithToken = async (token) => {
@@ -108,6 +173,23 @@ function AppContent() {
     } finally {
       setLoading(false);
     }
+    
+    // Fetch current user
+    try {
+      const response = await fetch('http://localhost:3030/users/me', {
+        method: 'GET',
+        headers: {
+          'TB_TOKEN': token,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const user = await response.json();
+        setCurrentUser(user);
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+    }
   };
 
   useEffect(() => {
@@ -121,8 +203,10 @@ function AppContent() {
     const savedToken = localStorage.getItem('TB_TOKEN');
     if (savedToken) {
       setAccessToken(savedToken);
-      // Auto-load projects if token exists
+      // Auto-load projects and translations if token exists
       fetchProjectsWithToken(savedToken);
+      // Load users for project leader selection
+      fetchUsers(savedToken);
     }
     
     // Debug info on app load
@@ -148,8 +232,29 @@ function AppContent() {
     setAccessToken(token);
     localStorage.setItem('TB_TOKEN', token);
     close();
-    // Auto-load projects after setting token
+    // Auto-load projects and users after setting token
     fetchProjectsWithToken(token);
+    fetchUsers(token);
+  };
+
+  // Fetch users for project leader selection
+  const fetchUsers = async (token) => {
+    try {
+      const response = await fetch('http://localhost:3030/users', {
+        method: 'GET',
+        headers: {
+          'TB_TOKEN': token || accessToken,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
   };
 
   const handleProjectSelect = (project) => {
@@ -157,34 +262,164 @@ function AppContent() {
     navigate(`/projects/${project.code}/kanban`);
   };
 
+  const handleProjectCreate = () => {
+    setEditingProject(null);
+    setProjectModalOpened(true);
+  };
+
   const handleProjectEdit = (project) => {
-    // TODO: Implement project editing in a separate feature branch
-    alert(`Edit project: ${project.title}`);
+    setEditingProject(project);
+    setProjectModalOpened(true);
+  };
+
+  const handleProjectSave = async (formData) => {
+    const token = localStorage.getItem('TB_TOKEN');
+    if (!token) {
+      throw new Error('No access token found');
+    }
+
+    try {
+      if (editingProject) {
+        // Edit mode - update project details and workflow separately
+        // First update project details
+        const projectResponse = await fetch(`http://localhost:3030/projects/${editingProject.id}`, {
+          method: 'PUT',
+          headers: {
+            'TB_TOKEN': token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            description: formData.description
+          })
+        });
+
+        if (!projectResponse.ok) {
+          const errorText = await projectResponse.text();
+          throw new Error(`Failed to update project: ${errorText}`);
+        }
+
+        // Then update status workflow
+        const workflowResponse = await fetch(`http://localhost:3030/projects/${editingProject.code}/statuses`, {
+          method: 'PUT',
+          headers: {
+            'TB_TOKEN': token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            statusWorkflow: formData.statusWorkflow
+          })
+        });
+
+        if (!workflowResponse.ok) {
+          const errorText = await workflowResponse.text();
+          throw new Error(`Failed to update workflow: ${errorText}`);
+        }
+      } else {
+        // Create mode - create project with workflow
+        const createResponse = await fetch('http://localhost:3030/projects', {
+          method: 'POST',
+          headers: {
+            'TB_TOKEN': token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            code: formData.code,
+            title: formData.title,
+            description: formData.description,
+            leaderId: formData.leaderId,
+            statusWorkflow: formData.statusWorkflow
+          })
+        });
+
+        if (!createResponse.ok) {
+          const errorText = await createResponse.text();
+          throw new Error(`Failed to create project: ${errorText}`);
+        }
+      }
+
+      // Refresh projects list
+      await fetchProjectsWithToken(token);
+      setProjectModalOpened(false);
+      setEditingProject(null);
+    } catch (error) {
+      console.error('Error saving project:', error);
+      throw error;
+    }
   };
 
   const handleCreateTask = () => {
     setCreateTaskModalOpened(true);
   };
 
-    const handleCreateTaskSubmit = () => {
-    // This will be implemented in the next feature branch
-    setCreateTaskModalOpened(false);
-    
-    // Convert tag strings to tag objects with colors
-    const tagColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'];
-    const tagsWithColors = newTask.tags.map((tagName, index) => ({
-      name: tagName,
-      color: tagColors[index % tagColors.length]
-    }));
-    
-    setNewTask({
-      title: '',
-      prompt: '',
-      priority: 'MEDIUM',
-      assigneeId: null,
-      storyPoints: null,
-      tags: []
-    });
+  const handleCreateTaskSubmit = async () => {
+    // Robust project finding
+    let targetProject = selectedProject;
+    if (!targetProject && projectCode && projects.length > 0) {
+      targetProject = projects.find(p => p.code === projectCode);
+    }
+
+    if (!newTask.title || !targetProject) {
+      console.error('Missing title or project', { title: newTask.title, project: targetProject });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('TB_TOKEN');
+      if (!token) return;
+
+      // Determine initial status from project workflow (first column)
+      const initialStatus = targetProject.statusWorkflow && targetProject.statusWorkflow.length > 0
+        ? targetProject.statusWorkflow[0]
+        : 'TO_DO';
+
+      const tagColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'];
+      const tagsWithColors = newTask.tags.map((tagName, index) => ({
+        tag: tagName,
+        color: tagColors[index % tagColors.length]
+      }));
+
+      // Map tags to tagNames array for API
+      const tagNames = newTask.tags;
+
+      const response = await fetch('http://localhost:3030/tasks', {
+        method: 'POST',
+        headers: {
+          'TB_TOKEN': token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: newTask.title,
+          prompt: newTask.prompt,
+          priority: newTask.priority,
+          storyPoints: newTask.storyPoints ? parseInt(newTask.storyPoints) : null,
+          projectId: targetProject.id,
+          status: initialStatus,
+          assigneeId: newTask.assigneeId ? parseInt(newTask.assigneeId) : null,
+          tagNames: tagNames
+        })
+      });
+
+      if (response.ok) {
+        setCreateTaskModalOpened(false);
+        setNewTask({
+          title: '',
+          prompt: '',
+          priority: 'MEDIUM',
+          assigneeId: null,
+          storyPoints: null,
+          tags: []
+        });
+        
+        // Trigger refresh
+        setRefreshTrigger(prev => prev + 1);
+        
+      } else {
+        console.error('Failed to create task:', response.status);
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
   };
 
   // Load project from URL if projectCode is present
@@ -333,14 +568,17 @@ function AppContent() {
                 projects={projects}
                 loading={loading}
                 accessToken={accessToken}
+                currentUser={currentUser}
                 onProjectSelect={handleProjectSelect}
                 onProjectEdit={handleProjectEdit}
+                onProjectCreate={handleProjectCreate}
               />
             } />
             <Route path="/projects/:projectCode/kanban" element={
               <KanbanPage 
                 selectedProject={selectedProject}
                 onBackToProjects={handleBackToProjects}
+                refreshTrigger={refreshTrigger}
               />
             } />
           </Routes>
@@ -354,6 +592,21 @@ function AppContent() {
         onSetToken={handleSetToken} 
       />
 
+      {/* Project Modal */}
+      {projectModalOpened && (
+        <ProjectModal
+          opened={projectModalOpened}
+          onClose={() => {
+            setProjectModalOpened(false);
+            setEditingProject(null);
+          }}
+          onSave={handleProjectSave}
+          project={editingProject}
+          users={users}
+          currentUser={currentUser}
+        />
+      )}
+
       {/* Create Task Modal */}
       <Modal 
         opened={createTaskModalOpened} 
@@ -361,74 +614,82 @@ function AppContent() {
         title={t('tasks.createTask')}
         size="lg"
       >
-        <Stack gap="md">
-          <TextInput
-            label={t('tasks.title')}
-            placeholder={t('tasks.title')}
-            value={newTask.title}
-            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-            required
-          />
-          
-                                  <Textarea
-                          label={t('tasks.prompt')}
-                          placeholder={t('tasks.prompt')}
-                          value={newTask.prompt}
-                          onChange={(e) => setNewTask({ ...newTask, prompt: e.target.value })}
-                          rows={3}
-                        />
-          
-          <Select
-            label={t('tasks.priority')}
-            data={[
-              { value: 'LOW', label: t('tasks.priorities.LOW') },
-              { value: 'MEDIUM', label: t('tasks.priorities.MEDIUM') },
-              { value: 'HIGH', label: t('tasks.priorities.HIGH') },
-              { value: 'CRITICAL', label: t('tasks.priorities.CRITICAL') }
-            ]}
-            value={newTask.priority}
-            onChange={(value) => setNewTask({ ...newTask, priority: value })}
-          />
-          
-          <NumberInput
-            label={t('tasks.storyPoints')}
-            placeholder={t('tasks.storyPoints')}
-            value={newTask.storyPoints}
-            onChange={(value) => setNewTask({ ...newTask, storyPoints: value })}
-            min={1}
-            max={21}
-          />
-          
-          <MultiSelect
-            label="Tags"
-            placeholder="Tags"
-            data={[
-              { value: 'setup', label: 'setup' },
-              { value: 'configuration', label: 'configuration' },
-              { value: 'database', label: 'database' },
-              { value: 'design', label: 'design' },
-              { value: 'auth', label: 'auth' },
-              { value: 'security', label: 'security' },
-              { value: 'documentation', label: 'documentation' },
-              { value: 'api', label: 'api' }
-            ]}
-            value={newTask.tags}
-            onChange={(value) => setNewTask({ ...newTask, tags: value })}
-            searchable
-            creatable
-            getCreateLabel={(query) => `+ Create ${query}`}
-            onCreate={(query) => query}
-          />
-          
-          <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={() => setCreateTaskModalOpened(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button onClick={handleCreateTaskSubmit}>
-              {t('tasks.createTask')}
-            </Button>
-          </Group>
-        </Stack>
+        <form onSubmit={(e) => { e.preventDefault(); handleCreateTaskSubmit(); }}>
+          <Stack gap="md">
+            <TextInput
+              label={t('tasks.title')}
+              placeholder={t('tasks.title')}
+              value={newTask.title}
+              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+              required
+              data-autofocus
+            />
+            
+            <Textarea
+              label={t('tasks.prompt')}
+              placeholder={t('tasks.prompt')}
+              value={newTask.prompt}
+              onChange={(e) => setNewTask({ ...newTask, prompt: e.target.value })}
+              rows={3}
+            />
+            
+            <Select
+              label={t('tasks.priority')}
+              data={[
+                { value: 'LOW', label: t('tasks.priorities.LOW') },
+                { value: 'MEDIUM', label: t('tasks.priorities.MEDIUM') },
+                { value: 'HIGH', label: t('tasks.priorities.HIGH') },
+                { value: 'CRITICAL', label: t('tasks.priorities.CRITICAL') }
+              ]}
+              value={newTask.priority}
+              onChange={(value) => setNewTask({ ...newTask, priority: value })}
+            />
+            
+            <NumberInput
+              label={t('tasks.storyPoints')}
+              placeholder={t('tasks.storyPoints')}
+              value={newTask.storyPoints}
+              onChange={(value) => setNewTask({ ...newTask, storyPoints: value })}
+              min={1}
+              max={21}
+            />
+            
+            <MultiSelect
+              label="Tags"
+              placeholder="Tags"
+              data={[
+                { value: 'setup', label: 'setup' },
+                { value: 'configuration', label: 'configuration' },
+                { value: 'database', label: 'database' },
+                { value: 'design', label: 'design' },
+                { value: 'auth', label: 'auth' },
+                { value: 'security', label: 'security' },
+                { value: 'documentation', label: 'documentation' },
+                { value: 'api', label: 'api' }
+              ]}
+              value={newTask.tags}
+              onChange={(value) => setNewTask({ ...newTask, tags: value })}
+              searchable
+              creatable
+              getCreateLabel={(query) => `+ Create ${query}`}
+              onCreate={(query) => {
+                // When a new tag is created, we need to add it to the state
+                // The MultiSelect will handle the display, but we should probably 
+                // handle the creation logic if needed, or just let the API handle it on submit
+                return { value: query, label: query };
+              }}
+            />
+            
+            <Group justify="flex-end" mt="md">
+              <Button variant="subtle" onClick={() => setCreateTaskModalOpened(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit">
+                {t('tasks.createTask')}
+              </Button>
+            </Group>
+          </Stack>
+        </form>
       </Modal>
 
       {/* Debug info - remove in production */}

@@ -63,6 +63,9 @@ export async function clearTaskData() {
   await db.delete(TASKS);
 }
 
+// Counter for generating unique task IDs within the same millisecond
+let taskCounter = 0;
+
 /**
  * Create a test task
  * @param {number} projectId - Project ID for the task
@@ -76,8 +79,8 @@ export async function createTestTask(projectId, overrides = {}) {
     throw new Error(`Project with id ${projectId} not found`);
   }
   
-  // Create unique task_id using timestamp
-  const taskId = `${project.code}-TEST-${Date.now()}`;
+  // Create unique task_id using timestamp and counter to avoid duplicates
+  const taskId = `${project.code}-TEST-${Date.now()}-${taskCounter++}`;
   
   const [task] = await db.insert(TASKS).values({
     project_id: projectId,

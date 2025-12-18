@@ -59,7 +59,15 @@
     "createProject": "Créer un Projet",
     "editProject": "Modifier le Projet",
     "deleteProject": "Supprimer le Projet",
-    "projectDetails": "Détails du Projet"
+    "projectDetails": "Détails du Projet",
+    "statusWorkflow": {
+      "title": "Flux de Travail des Statuts",
+      "selected": "Flux de Travail Sélectionné",
+      "available": "Statuts Disponibles",
+      "dragHelp": "Glissez pour réorganiser. Ces statuts apparaîtront sous forme de colonnes dans votre tableau Kanban.",
+      "viewHelp": "Ces statuts apparaîtront sous forme de colonnes dans votre tableau Kanban.",
+      "addHelp": "Cliquez sur \"Ajouter\" pour inclure un statut dans votre flux de travail."
+    }
   },
   "tasks": {
     "title": "Tâches",
@@ -87,12 +95,6 @@
     "editTask": "Modifier la Tâche",
     "deleteTask": "Supprimer la Tâche",
     "taskDetails": "Détails de la Tâche",
-    "statuses": {
-      "TO_DO": "À Faire",
-      "IN_PROGRESS": "En Cours",
-      "IN_REVIEW": "En Révision",
-      "DONE": "Terminé"
-    },
     "priorities": {
       "LOW": "Faible",
       "MEDIUM": "Moyenne",

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useTasks(selectedProject) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Task statuses in order for columns
-  const taskStatuses = ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'];
+  // Task statuses from project workflow, fallback to default 3 statuses
+  const taskStatuses = selectedProject?.statusWorkflow || ['TO_DO', 'IN_PROGRESS', 'DONE'];
 
   // Fetch tasks from API
   useEffect(() => {
@@ -66,13 +66,13 @@ export function useTasks(selectedProject) {
     fetchTasks();
   }, [selectedProject]);
 
-  const getTasksByStatus = (status) => {
+  const getTasksByStatus = useCallback((status) => {
     return tasks
       .filter(task => task.status === status)
       .sort((a, b) => (a.position || 0) - (b.position || 0));
-  };
+  }, [tasks]);
 
-  const addTask = async (newTask) => {
+  const addTask = useCallback(async (newTask) => {
     try {
       const token = localStorage.getItem('TB_TOKEN');
       if (!token) {
@@ -108,9 +108,9 @@ export function useTasks(selectedProject) {
     } catch (error) {
       console.error('Error creating task:', error);
     }
-  };
+  }, [selectedProject]);
 
-  const updateTask = async (taskId, updates) => {
+  const updateTask = useCallback(async (taskId, updates) => {
     try {
       const token = localStorage.getItem('TB_TOKEN');
       if (!token) {
@@ -152,9 +152,9 @@ export function useTasks(selectedProject) {
     } catch (error) {
       console.error('Error updating task:', error);
     }
-  };
+  }, [tasks, selectedProject]);
 
-  const deleteTask = async (taskId) => {
+  const deleteTask = useCallback(async (taskId) => {
     try {
       const token = localStorage.getItem('TB_TOKEN');
       if (!token) {
@@ -192,13 +192,13 @@ export function useTasks(selectedProject) {
     } catch (error) {
       console.error('Error deleting task:', error);
     }
-  };
+  }, [tasks, selectedProject]);
 
-  const moveTask = (taskId, newStatus) => {
+  const moveTask = useCallback((taskId, newStatus) => {
     updateTask(taskId, { status: newStatus });
-  };
+  }, [updateTask]);
 
-  const refreshTasks = async () => {
+  const refreshTasks = useCallback(async () => {
     if (!selectedProject) return;
     
     setLoading(true);
@@ -237,7 +237,7 @@ export function useTasks(selectedProject) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedProject]);
 
   return {
     tasks,

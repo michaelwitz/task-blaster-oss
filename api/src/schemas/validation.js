@@ -108,7 +108,7 @@ export const taskSchemas = {
       type: 'object',
       properties: {
         projectId: { type: 'string', pattern: '^[0-9]+$' },
-        status: { type: 'string', enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] },
+        status: { type: 'string', pattern: '^[A-Z_]+$' },
         priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
         assigneeId: { type: 'string', pattern: '^[0-9]+$' },
         search: { type: 'string', minLength: 1, maxLength: 255 }
@@ -129,7 +129,7 @@ export const taskSchemas = {
         title: { type: 'string', minLength: 1, maxLength: 255 },
         description: { type: 'string', maxLength: 5000 },
         projectId: { type: 'integer', minimum: 1 },
-        status: { type: 'string', enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'], default: 'TO_DO' },
+        status: { type: 'string', pattern: '^[A-Z_]+$', default: 'TO_DO' },
         priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], default: 'MEDIUM' },
         dueDate: { type: 'string', format: 'date-time', nullable: true },
         assigneeId: { type: 'integer', minimum: 1, nullable: true },
@@ -150,7 +150,7 @@ export const taskSchemas = {
       properties: {
         title: { type: 'string', minLength: 1, maxLength: 255 },
         description: { type: 'string', maxLength: 5000 },
-        status: { type: 'string', enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] },
+        status: { type: 'string', pattern: '^[A-Z_]+$' },
         priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
         storyPoints: { type: 'integer', minimum: 1, maximum: 21, nullable: true },
         assigneeId: { type: 'integer', minimum: 1, nullable: true },
@@ -276,7 +276,7 @@ export const projectSchemas = {
     querystring: {
       type: 'object',
       properties: {
-        status: { type: 'string', enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] },
+        status: { type: 'string', pattern: '^[A-Z_]+$' },
         priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] }
       }
     }
@@ -298,8 +298,8 @@ export const projectSchemas = {
       required: ['status'],
       properties: {
         status: { 
-          type: 'string', 
-          enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] 
+          type: 'string',
+          pattern: '^[A-Z_]+$'
         }
       }
     }
@@ -319,15 +319,15 @@ export const projectSchemas = {
       type: 'object',
       properties: {
         title: { type: 'string' },
-        status: { type: 'string', enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] },
+        status: { type: 'string', pattern: '^[A-Z_]+$' },
         priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
-        storyPoints: { type: 'number' },
-        assigneeId: { type: 'number' },
-        prompt: { type: 'string' },
+        storyPoints: { type: 'number', nullable: true },
+        assigneeId: { type: 'number', nullable: true },
+        prompt: { type: 'string', nullable: true },
         isBlocked: { type: 'boolean' },
-        blockedReason: { type: 'string' },
-        gitFeatureBranch: { type: 'string' },
-        gitPullRequestUrl: { type: 'string' },
+        blockedReason: { type: 'string', nullable: true },
+        gitFeatureBranch: { type: 'string', nullable: true },
+        gitPullRequestUrl: { type: 'string', nullable: true },
         tagNames: { type: 'array', items: { type: 'string' } }
       }
     }

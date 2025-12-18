@@ -59,7 +59,15 @@
     "createProject": "Crear Proyecto",
     "editProject": "Editar Proyecto",
     "deleteProject": "Eliminar Proyecto",
-    "projectDetails": "Detalles del Proyecto"
+    "projectDetails": "Detalles del Proyecto",
+    "statusWorkflow": {
+      "title": "Flujo de Trabajo de Estados",
+      "selected": "Flujo de Trabajo Seleccionado",
+      "available": "Estados Disponibles",
+      "dragHelp": "Arrastra para reordenar. Estos estados aparecerán como columnas en tu tablero Kanban.",
+      "viewHelp": "Estos estados aparecerán como columnas en tu tablero Kanban.",
+      "addHelp": "Haz clic en \"Agregar\" para incluir un estado en tu flujo de trabajo."
+    }
   },
   "tasks": {
     "title": "Tareas",
@@ -87,12 +95,6 @@
     "editTask": "Editar Tarea",
     "deleteTask": "Eliminar Tarea",
     "taskDetails": "Detalles de la Tarea",
-    "statuses": {
-      "TO_DO": "Por Hacer",
-      "IN_PROGRESS": "En Progreso",
-      "IN_REVIEW": "En Revisión",
-      "DONE": "Completado"
-    },
     "priorities": {
       "LOW": "Baja",
       "MEDIUM": "Media",

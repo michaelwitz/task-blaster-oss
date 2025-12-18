@@ -10,7 +10,7 @@ export async function seedProjects() {
         title: 'Website Redesign', 
         code: 'WEBRED', 
         description: 'Complete overhaul of company website with modern design',
-        leader_id: 1,
+        leader_id: 5,
         status_workflow: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'],
         created_by: 1
       },
@@ -27,8 +27,24 @@ export async function seedProjects() {
         code: 'APIMOD', 
         description: 'Migrate legacy APIs to modern REST architecture',
         leader_id: 3,
-        status_workflow: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_DEPLOY', 'DONE'],
+        status_workflow: ['ICEBOX', 'TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_DEPLOY', 'DONE'],
         created_by: 3
+      },
+      { 
+        title: 'Database Migration', 
+        code: 'DATAMIG', 
+        description: 'Migrate all customer data to new clustered database',
+        leader_id: 5,
+        status_workflow: ['TO_DO', 'IN_PROGRESS', 'DONE'],
+        created_by: 5
+      },
+      { 
+        title: 'Security Compliance', 
+        code: 'SECURE', 
+        description: 'Annual security audit and compliance updates',
+        leader_id: 4,
+        status_workflow: ['AWAITING_APPROVAL', 'TO_DO', 'IN_PROGRESS', 'TESTING', 'READY_FOR_DEPLOY', 'DONE'],
+        created_by: 4
       }
     ]);
     

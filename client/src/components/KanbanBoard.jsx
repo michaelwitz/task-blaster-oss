@@ -1,4 +1,3 @@
-import { Grid } from '@mantine/core';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { KanbanColumn } from './KanbanColumn.jsx';
@@ -22,7 +21,16 @@ export function KanbanBoard({ taskStatuses, getTasksByStatus, onTaskEdit, onDrag
       collisionDetection={closestCenter}
       onDragEnd={onDragEnd}
     >
-      <Grid gutter="xs" style={{ flex: 1, minHeight: 'calc(100vh - 120px)' }}>
+      <div 
+        style={{ 
+          display: 'flex', 
+          flexWrap: 'nowrap', 
+          overflowX: 'auto', 
+          gap: '16px', 
+          height: '100%',
+          paddingBottom: '16px' // Space for scrollbar
+        }}
+      >
         {taskStatuses.map(status => (
           <KanbanColumn 
             key={status} 
@@ -31,7 +39,7 @@ export function KanbanBoard({ taskStatuses, getTasksByStatus, onTaskEdit, onDrag
             onTaskEdit={onTaskEdit}
           />
         ))}
-      </Grid>
+      </div>
     </DndContext>
   );
 }

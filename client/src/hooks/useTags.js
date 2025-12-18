@@ -27,7 +27,6 @@ export function useTags() {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Fetched tags:', data);
           setTags(data);
         } else if (response.status === 401) {
           console.error('Unauthorized - access token invalid');

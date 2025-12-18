@@ -1,7 +1,9 @@
 import { db } from '../lib/db/index.js';
-import { USERS, PROJECTS, TASKS, TAGS, TASK_TAGS, IMAGE_METADATA, IMAGE_DATA } from '../lib/db/schema.js';
+import { USERS, PROJECTS, TASKS, TAGS, TASK_TAGS, IMAGE_METADATA, IMAGE_DATA, STATUS_DEFINITIONS, TRANSLATIONS } from '../lib/db/schema.js';
 import { sql } from 'drizzle-orm';
 import { seedUsers } from './seeders/seedUsers.js';
+import { seedStatusDefinitions } from './seeders/seedStatusDefinitions.js';
+import { seedTranslations } from './seeders/seedTranslations.js';
 import { seedProjects } from './seeders/seedProjects.js';
 import { seedTags } from './seeders/seedTags.js';
 import { seedTasks } from './seeders/seedTasks.js';
@@ -22,6 +24,8 @@ async function resetAndSeed() {
     await db.execute(sql`DROP TABLE IF EXISTS "TASKS" CASCADE`);
     await db.execute(sql`DROP TABLE IF EXISTS "PROJECTS" CASCADE`);
     await db.execute(sql`DROP TABLE IF EXISTS "TAGS" CASCADE`);
+    await db.execute(sql`DROP TABLE IF EXISTS "TRANSLATIONS" CASCADE`);
+    await db.execute(sql`DROP TABLE IF EXISTS "STATUS_DEFINITIONS" CASCADE`);
     await db.execute(sql`DROP TABLE IF EXISTS "USERS" CASCADE`);
     
     console.log('  🏗️ Recreating tables with updated schema...');
@@ -40,6 +44,8 @@ async function resetAndSeed() {
     console.log('📋 Step 2a: Seeding base entities...');
     await seedUsers();
     await seedTags();
+    await seedStatusDefinitions();
+    await seedTranslations();
     console.log('');
 
     // Step 2b: Seed tables that depend on users
@@ -60,11 +66,14 @@ async function resetAndSeed() {
     console.log('✅ Database reset and seeding completed successfully!');
     console.log('📊 Summary:');
     console.log('   • 5 users created (including Michael Woytowitz)');
-    console.log('   • 3 projects created');
+    console.log('   • 5 projects created');
     console.log('   • 10 tags created (with colors)');
+    console.log('   • 8 status definitions created');
+    console.log('   • 4 languages translations created');
     console.log('   • 5 tasks created');
     console.log('   • 10 task-tag relationships created');
     
+    process.exit(0);
   } catch (error) {
     console.error('❌ Error resetting and seeding data:', error.message);
     console.error('🔍 Full error:', error);

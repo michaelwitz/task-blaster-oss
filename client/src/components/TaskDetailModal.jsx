@@ -31,11 +31,12 @@ import { useUsers } from '../hooks/useUsers.js';
 
 export function TaskDetailsModal({ 
   task, 
+  taskStatuses = ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'], // Default fallback
   opened, 
   onClose, 
   onSave
 }) {
-  const { t, translatePriority } = useTranslation();
+  const { t, translatePriority, translateStatus } = useTranslation();
   const { tags = [] } = useTags();
   const { users = [] } = useUsers();
   const [editedTask, setEditedTask] = useState(null);
@@ -78,8 +79,17 @@ export function TaskDetailsModal({
         color: tagColors[index % tagColors.length]
       }));
       
-      onSave({
+      // Normalize empty strings to null for cleaner data
+      const normalizedTask = {
         ...editedTask,
+        blockedReason: editedTask.blockedReason === '' ? null : editedTask.blockedReason,
+        gitFeatureBranch: editedTask.gitFeatureBranch === '' ? null : editedTask.gitFeatureBranch,
+        gitPullRequestUrl: editedTask.gitPullRequestUrl === '' ? null : editedTask.gitPullRequestUrl,
+        prompt: editedTask.prompt === '' ? null : editedTask.prompt
+      };
+      
+      onSave({
+        ...normalizedTask,
         tags: tagsWithColors,
         tagNames: editedTask.tags // Send tag names for API update
       });
@@ -94,6 +104,7 @@ export function TaskDetailsModal({
       ...task,
       tags: task.tags && Array.isArray(task.tags) ? task.tags.map(tag => tag?.tag || tag).filter(Boolean) : []
     });
+    onClose();
   };
 
   const handleClose = () => {
@@ -243,12 +254,10 @@ export function TaskDetailsModal({
                 
                 <Select
                   label={t('tasks.status')}
-                  data={[
-                    { value: 'TO_DO', label: t('tasks.statuses.TO_DO') },
-                    { value: 'IN_PROGRESS', label: t('tasks.statuses.IN_PROGRESS') },
-                    { value: 'IN_REVIEW', label: t('tasks.statuses.IN_REVIEW') },
-                    { value: 'DONE', label: t('tasks.statuses.DONE') }
-                  ]}
+                  data={taskStatuses.map(status => ({
+                    value: status,
+                    label: translateStatus(status)
+                  }))}
                   value={editedTask?.status || 'TO_DO'}
                   onChange={(value) => setEditedTask({ ...editedTask, status: value })}
                   maxDropdownHeight={200}

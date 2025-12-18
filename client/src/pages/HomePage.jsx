@@ -1,9 +1,9 @@
-import { Container, Title, Text, Alert } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { Container, Title, Text, Alert, Button, Group } from '@mantine/core';
+import { IconAlertCircle, IconPlus } from '@tabler/icons-react';
 import { ProjectList } from '../components/ProjectList.jsx';
 import { useTranslation } from '../hooks/useTranslation.js';
 
-export function HomePage({ projects, loading, accessToken, onProjectSelect, onProjectEdit }) {
+export function HomePage({ projects, loading, accessToken, currentUser, onProjectSelect, onProjectEdit, onProjectCreate }) {
   const { t } = useTranslation();
 
   if (!accessToken) {
@@ -22,10 +22,19 @@ export function HomePage({ projects, loading, accessToken, onProjectSelect, onPr
 
   return (
     <Container size="lg" py="xl" mt="md">
-      <Title order={1} mb="lg">{t('projects.title')}</Title>
+      <Group justify="space-between" mb="lg">
+        <Title order={1}>{t('projects.title')}</Title>
+        <Button 
+          leftSection={<IconPlus size={16} />}
+          onClick={onProjectCreate}
+        >
+          {t('projects.createProject')}
+        </Button>
+      </Group>
       <ProjectList 
         projects={projects} 
         loading={loading} 
+        currentUser={currentUser}
         onProjectSelect={onProjectSelect}
         onProjectEdit={onProjectEdit}
       />

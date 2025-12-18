@@ -59,7 +59,15 @@
     "createProject": "Create Project",
     "editProject": "Edit Project",
     "deleteProject": "Delete Project",
-    "projectDetails": "Project Details"
+    "projectDetails": "Project Details",
+    "statusWorkflow": {
+      "title": "Status Workflow",
+      "selected": "Selected Status Workflow",
+      "available": "Available Statuses",
+      "dragHelp": "Drag to reorder. These statuses will appear as columns in your Kanban board.",
+      "viewHelp": "These statuses will appear as columns in your Kanban board.",
+      "addHelp": "Click \"Add\" to include a status in your workflow."
+    }
   },
   "tasks": {
     "title": "Tasks",
@@ -98,12 +106,6 @@
     "editTask": "Edit Task",
     "deleteTask": "Delete Task",
     "taskDetails": "Task Details",
-    "statuses": {
-      "TO_DO": "To Do",
-      "IN_PROGRESS": "In Progress",
-      "IN_REVIEW": "In Review",
-      "DONE": "Done"
-    },
     "priorities": {
       "LOW": "Low",
       "MEDIUM": "Medium",
@@ -139,7 +141,9 @@
     "actions": "Actions",
     "noTags": "No tags found",
     "createFirstTag": "Create your first tag to get started",
-    "selectOrCreate": "Select or create tags"
+    "selectOrCreate": "Select or create tags",
+    "commaSeparated": "Tags (comma separated)",
+    "commaSeparatedDescription": "Enter tags separated by commas (e.g. frontend, bug, high-priority)"
   },
   "forms": {
     "required": "This field is required",

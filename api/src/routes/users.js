@@ -7,6 +7,22 @@ export default async function userRoutes(fastify, options) {
   // Add authentication middleware to all user routes
   fastify.addHook('preHandler', authMiddleware);
 
+  // GET /users/me - Get authenticated user details
+  fastify.get('/users/me', async (request, reply) => {
+    try {
+      // request.user is populated by authMiddleware
+      if (!request.user) {
+        return reply.code(401).send({ error: 'Not authenticated' });
+      }
+      
+      const user = await dbService.getUserById(request.user.id);
+      reply.send(user);
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500).send({ error: 'Failed to fetch user profile' });
+    }
+  });
+
   // GET /users - List all users with optional search
   fastify.get('/users', {
     schema: userSchemas.getUsers

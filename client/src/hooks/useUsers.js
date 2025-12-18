@@ -27,7 +27,6 @@ export function useUsers() {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Fetched users:', data);
           setUsers(data);
         } else if (response.status === 401) {
           console.error('Unauthorized - access token invalid');

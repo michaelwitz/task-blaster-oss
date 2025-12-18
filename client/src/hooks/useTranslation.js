@@ -20,6 +20,11 @@ export const useTranslation = () => {
     return t(`tasks.priorities.${priority}`, priority);
   };
   
+  // Helper for translating status descriptions
+  const translateStatusDescription = (status) => {
+    return t(`tasks.statusDescriptions.${status}`, '');
+  };
+  
   // Helper for translating common actions
   const translateAction = (action) => {
     return t(`common.${action}`, action);
@@ -29,9 +34,10 @@ export const useTranslation = () => {
     t: translate,
     translateStatus,
     translatePriority,
+    translateStatusDescription,
     translateAction,
     i18n,
     currentLanguage: i18n.language,
     changeLanguage: i18n.changeLanguage,
   };
-}; 
+};

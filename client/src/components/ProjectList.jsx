@@ -1,9 +1,9 @@
-import { Table, Text, Badge, Group, ActionIcon } from '@mantine/core';
+import { Table, Text, Badge, Group, ActionIcon, Tooltip, Box } from '@mantine/core';
 import { IconCalendar, IconEdit } from '@tabler/icons-react';
 import { useTranslation } from '../hooks/useTranslation.js';
 import { useEffect } from 'react';
 
-export function ProjectList({ projects, loading, onProjectSelect, onProjectEdit }) {
+export function ProjectList({ projects, loading, currentUser, onProjectSelect, onProjectEdit }) {
   const { t } = useTranslation();
   
   // Debug info when project list renders
@@ -38,6 +38,7 @@ export function ProjectList({ projects, loading, onProjectSelect, onProjectEdit 
     <Table>
       <Table.Thead>
         <Table.Tr>
+          <Table.Th style={{ width: '40px' }}></Table.Th>
           <Table.Th>{t('tasks.title')}</Table.Th>
           <Table.Th>{t('projects.leader')}</Table.Th>
           <Table.Th>{t('projects.createdAt')}</Table.Th>
@@ -54,6 +55,21 @@ export function ProjectList({ projects, loading, onProjectSelect, onProjectEdit 
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
+            <Table.Td>
+              {currentUser && project.leaderId === currentUser.id && (
+                <Tooltip label="You are the project leader" withArrow>
+                  <Box 
+                    style={{ 
+                      width: 8, 
+                      height: 8, 
+                      borderRadius: '50%', 
+                      backgroundColor: 'var(--mantine-color-blue-5)',
+                      margin: '0 auto'
+                    }} 
+                  />
+                </Tooltip>
+              )}
+            </Table.Td>
             <Table.Td>
               <div 
                 style={{ 

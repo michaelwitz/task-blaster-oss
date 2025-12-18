@@ -8,7 +8,9 @@ import { KanbanBoard } from '../components/KanbanBoard.jsx';
 import { KanbanDebug } from '../components/KanbanDebug.jsx';
 import { TaskDetailsModal } from '../components/TaskDetailModal.jsx';
 
-export function KanbanPage({ selectedProject, onBackToProjects }) {
+import { useEffect } from 'react';
+
+export function KanbanPage({ selectedProject, onBackToProjects, refreshTrigger }) {
   const { t } = useTranslation();
   const { 
     tasks, 
@@ -17,6 +19,13 @@ export function KanbanPage({ selectedProject, onBackToProjects }) {
     getTasksByStatus,
     refreshTasks 
   } = useTasks(selectedProject);
+  
+  // Refresh tasks when trigger changes
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      refreshTasks();
+    }
+  }, [refreshTrigger, refreshTasks]);
   
   // Use custom hooks for better separation of concerns
   const { openModals, openModal, closeModal, updateModalTask } = useModalManager();
@@ -59,6 +68,7 @@ export function KanbanPage({ selectedProject, onBackToProjects }) {
         <TaskDetailsModal
           key={modal.id}
           task={modal.task}
+          taskStatuses={taskStatuses}
           opened={true}
           onClose={() => handleModalClose(modal.id)}
           onSave={(updatedTask) => handleTaskSave(modal.id, updatedTask)}

@@ -59,7 +59,15 @@
     "createProject": "Projekt erstellen",
     "editProject": "Projekt bearbeiten",
     "deleteProject": "Projekt löschen",
-    "projectDetails": "Projektdetails"
+    "projectDetails": "Projektdetails",
+    "statusWorkflow": {
+      "title": "Status-Workflow",
+      "selected": "Ausgewählter Status-Workflow",
+      "available": "Verfügbare Status",
+      "dragHelp": "Ziehen zum Neuordnen. Diese Status erscheinen als Spalten in Ihrem Kanban-Board.",
+      "viewHelp": "Diese Status erscheinen als Spalten in Ihrem Kanban-Board.",
+      "addHelp": "Klicken Sie auf \"Hinzufügen\", um einen Status in Ihren Workflow aufzunehmen."
+    }
   },
   "tasks": {
     "title": "Aufgaben",
@@ -87,12 +95,6 @@
     "editTask": "Aufgabe bearbeiten",
     "deleteTask": "Aufgabe löschen",
     "taskDetails": "Aufgabendetails",
-    "statuses": {
-      "TO_DO": "Zu Erledigen",
-      "IN_PROGRESS": "In Bearbeitung",
-      "IN_REVIEW": "In Überprüfung",
-      "DONE": "Erledigt"
-    },
     "priorities": {
       "LOW": "Niedrig",
       "MEDIUM": "Mittel",

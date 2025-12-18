@@ -1,7 +1,8 @@
 import { eq, and, sql, desc, asc, like, or, inArray } from 'drizzle-orm';
 import { db } from '../../lib/db/index.js';
-import { USERS, PROJECTS, TASKS, TAGS, TASK_TAGS, IMAGE_METADATA, IMAGE_DATA } from '../../lib/db/schema.js';
+import { USERS, PROJECTS, TASKS, TAGS, TASK_TAGS, IMAGE_METADATA, IMAGE_DATA, STATUS_DEFINITIONS, TRANSLATIONS } from '../../lib/db/schema.js';
 import { getRandomTagColor } from '../utils/tagColors.js';
+import { keysToCamelCase } from '../utils/propertyMapper.js';
 import { randomUUID } from 'crypto';
 
 /**
@@ -111,6 +112,7 @@ class DatabaseService {
       leaderId: PROJECTS.leader_id,
       leaderName: USERS.full_name,
       leaderEmail: USERS.email,
+      statusWorkflow: PROJECTS.status_workflow,
       createdAt: PROJECTS.created_at,
       updatedAt: PROJECTS.updated_at,
       taskCount: sql`COUNT(${TASKS.id})`.as('taskCount')
@@ -124,6 +126,7 @@ class DatabaseService {
       PROJECTS.code,
       PROJECTS.description, 
       PROJECTS.leader_id,
+      PROJECTS.status_workflow,
       PROJECTS.created_at,
       PROJECTS.updated_at,
       USERS.full_name,
@@ -146,6 +149,7 @@ class DatabaseService {
       leaderId: PROJECTS.leader_id,
       leaderName: USERS.full_name,
       leaderEmail: USERS.email,
+      statusWorkflow: PROJECTS.status_workflow,
       createdAt: PROJECTS.created_at,
       updatedAt: PROJECTS.updated_at
     })
@@ -169,6 +173,7 @@ class DatabaseService {
       leaderId: PROJECTS.leader_id,
       leaderName: USERS.full_name,
       leaderEmail: USERS.email,
+      statusWorkflow: PROJECTS.status_workflow,
       createdAt: PROJECTS.created_at,
       updatedAt: PROJECTS.updated_at
     })
@@ -189,7 +194,8 @@ class DatabaseService {
         title: projectData.title,
         code: projectData.code,
         description: projectData.description,
-        leader_id: projectData.leaderId
+        leader_id: projectData.leaderId,
+        status_workflow: projectData.statusWorkflow || ['TO_DO', 'IN_PROGRESS', 'DONE']
       })
       .returning();
     
@@ -243,6 +249,56 @@ class DatabaseService {
       .returning();
     
     return project || null;
+  }
+
+  /**
+   * Get project's status workflow
+   */
+  async getProjectStatusWorkflow(projectId) {
+    const [project] = await db.select({
+      id: PROJECTS.id,
+      code: PROJECTS.code,
+      statusWorkflow: PROJECTS.status_workflow
+    })
+    .from(PROJECTS)
+    .where(eq(PROJECTS.id, projectId))
+    .limit(1);
+
+    return project || null;
+  }
+
+  /**
+   * Update project's status workflow
+   */
+  async updateProjectStatusWorkflow(projectId, statusWorkflow, updatedBy) {
+    const [project] = await db.update(PROJECTS)
+      .set({ 
+        status_workflow: statusWorkflow,
+        updated_by: updatedBy,
+        updated_at: new Date()
+      })
+      .where(eq(PROJECTS.id, projectId))
+      .returning();
+    
+    return project || null;
+  }
+
+  /**
+   * Check if any tasks in project use a specific status
+   */
+  async hasTasksWithStatus(projectId, status) {
+    const [result] = await db.select({ 
+      count: sql`COUNT(*)`.as('count') 
+    })
+    .from(TASKS)
+    .where(
+      and(
+        eq(TASKS.project_id, projectId),
+        eq(TASKS.status, status)
+      )
+    );
+    
+    return parseInt(result.count) > 0;
   }
 
   // ==================== TASK OPERATIONS ====================
@@ -504,7 +560,8 @@ class DatabaseService {
       await this.setTaskTags(task.id, taskData.tags);
     }
 
-    return task;
+    // Return the full task object in camelCase format
+    return await this.getTaskById(task.id);
   }
 
   /**
@@ -534,11 +591,12 @@ class DatabaseService {
       .returning();
 
     // Update tags if provided
-    if (taskData.tagIds !== undefined) {
-      await this.setTaskTags(id, taskData.tagIds || []);
+    if (taskData.tagNames !== undefined) {
+      await this.setTaskTags(id, taskData.tagNames || []);
     }
 
-    return task || null;
+    // Return the full task object in camelCase format
+    return await this.getTaskById(id);
   }
 
   /**
@@ -559,17 +617,15 @@ class DatabaseService {
 
     // If status is changing, handle it as a status change
     if (status !== oldStatus) {
-      // Update the task with new status and position
-      const [updatedTask] = await db.update(TASKS)
+      await db.update(TASKS)
         .set({ 
           status: status,
           position: newPosition,
           updated_at: new Date()
         })
-        .where(eq(TASKS.id, taskId))
-        .returning();
+        .where(eq(TASKS.id, taskId));
 
-      return updatedTask;
+      return await this.getTaskById(taskId);
     }
 
     // Same status - handle position change with sparse positioning
@@ -1064,6 +1120,73 @@ class DatabaseService {
     }
 
     return { positions, needsRedistribution };
+  }
+
+  // ==================== STATUS DEFINITIONS OPERATIONS ====================
+
+  /**
+   * Get all available status definitions
+   */
+  async getStatusDefinitions() {
+    const statuses = await db.select({
+      code: STATUS_DEFINITIONS.code,
+      description: STATUS_DEFINITIONS.description,
+      createdAt: STATUS_DEFINITIONS.created_at,
+      updatedAt: STATUS_DEFINITIONS.updated_at
+    })
+    .from(STATUS_DEFINITIONS)
+    .orderBy(asc(STATUS_DEFINITIONS.code));
+
+    return statuses;
+  }
+
+  /**
+   * Get status definition by code
+   */
+  async getStatusDefinitionByCode(code) {
+    const [status] = await db.select({
+      code: STATUS_DEFINITIONS.code,
+      description: STATUS_DEFINITIONS.description,
+      createdAt: STATUS_DEFINITIONS.created_at,
+      updatedAt: STATUS_DEFINITIONS.updated_at
+    })
+    .from(STATUS_DEFINITIONS)
+    .where(eq(STATUS_DEFINITIONS.code, code))
+    .limit(1);
+
+    return status || null;
+  }
+
+  // ==================== TRANSLATIONS OPERATIONS ====================
+
+  /**
+   * Get translations by language code
+   */
+  async getTranslationsByLanguage(languageCode) {
+    const [translation] = await db.select({
+      id: TRANSLATIONS.id,
+      languageCode: TRANSLATIONS.language_code,
+      translations: TRANSLATIONS.translations,
+      updatedAt: TRANSLATIONS.updated_at
+    })
+    .from(TRANSLATIONS)
+    .where(eq(TRANSLATIONS.language_code, languageCode))
+    .limit(1);
+
+    return translation || null;
+  }
+
+  /**
+   * Get all available language codes
+   */
+  async getAvailableLanguages() {
+    const languages = await db.select({
+      languageCode: TRANSLATIONS.language_code
+    })
+    .from(TRANSLATIONS)
+    .orderBy(asc(TRANSLATIONS.language_code));
+
+    return languages.map(lang => lang.languageCode);
   }
 }
 

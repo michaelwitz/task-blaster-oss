@@ -1,4 +1,4 @@
-import { Grid, Paper, Stack, Text, Badge, Box, Group } from '@mantine/core';
+import { Paper, Stack, Text, Badge, Box, Group } from '@mantine/core';
 import { useTranslation } from '../hooks/useTranslation.js';
 import { TaskCard } from './TaskCard.jsx';
 import { useState } from 'react';
@@ -54,7 +54,13 @@ export function KanbanColumn({ status, tasks, onTaskEdit }) {
   });
 
   return (
-    <Grid.Col span={3} style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 120px)' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      minHeight: 'calc(100vh - 140px)', 
+      flex: '0 0 320px',
+      maxWidth: '320px'
+    }}>
       {/* Column title */}
       <Box style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '8px', padding: '0 4px' }}>
         <Group gap="xs" align="center">
@@ -119,6 +125,6 @@ export function KanbanColumn({ status, tasks, onTaskEdit }) {
           )}
         </Box>
       </Paper>
-    </Grid.Col>
+    </div>
   );
 } 

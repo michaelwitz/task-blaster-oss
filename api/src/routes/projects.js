@@ -115,7 +115,7 @@ export default async function projectRoutes(fastify, options) {
         required: ['id', 'status'],
         properties: {
           id: { type: 'string', pattern: '^\\d+$' },
-          status: { type: 'string', enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] }
+          status: { type: 'string', pattern: '^[A-Z_]+$' }
         }
       }
     }
@@ -140,7 +140,7 @@ export default async function projectRoutes(fastify, options) {
         required: ['code', 'status'],
         properties: {
           code: { type: 'string', pattern: '^[A-Z0-9]+$' }, // Project code like PROJ, FEATURE
-          status: { type: 'string', enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] }
+          status: { type: 'string', pattern: '^[A-Z_]+$' }
         }
       },
       body: {
@@ -196,7 +196,7 @@ export default async function projectRoutes(fastify, options) {
         required: ['newPosition', 'status'],
         properties: {
           newPosition: { type: 'number' },
-          status: { type: 'string', enum: ['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] }
+          status: { type: 'string', pattern: '^[A-Z_]+$' }
         }
       }
     }
@@ -339,6 +339,124 @@ export default async function projectRoutes(fastify, options) {
     } catch (error) {
       request.log.error(error, 'Failed to delete task');
       reply.code(500).send({ error: 'Failed to delete task' });
+    }
+  });
+
+  // GET /projects/:code/statuses - Get project's status workflow
+  fastify.get('/projects/:code/statuses', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['code'],
+        properties: {
+          code: { type: 'string', pattern: '^[A-Z0-9]+$' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            statusWorkflow: {
+              type: 'array',
+              items: { type: 'string' }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      const { code } = request.params;
+      
+      const project = await dbService.getProjectByCode(code);
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+      
+      reply.send({ statusWorkflow: project.statusWorkflow });
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500).send({ error: 'Failed to fetch project status workflow' });
+    }
+  });
+
+  // PUT /projects/:code/statuses - Update project's status workflow (leaders only)
+  fastify.put('/projects/:code/statuses', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['code'],
+        properties: {
+          code: { type: 'string', pattern: '^[A-Z0-9]+$' }
+        }
+      },
+      body: {
+        type: 'object',
+        required: ['statusWorkflow'],
+        properties: {
+          statusWorkflow: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 1
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      const { code } = request.params;
+      const { statusWorkflow } = request.body;
+      
+      // Get project by code
+      const project = await dbService.getProjectByCode(code);
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+      
+      // Verify user is project leader
+      if (project.leaderId !== request.user.id) {
+        return reply.code(403).send({ error: 'Only project leaders can update status workflow' });
+      }
+      
+      // Validate all status codes exist in STATUS_DEFINITIONS
+      const validStatuses = await dbService.getStatusDefinitions();
+      const validStatusCodes = validStatuses.map(s => s.code);
+      
+      const invalidStatuses = statusWorkflow.filter(status => !validStatusCodes.includes(status));
+      if (invalidStatuses.length > 0) {
+        return reply.code(400).send({ 
+          error: 'Invalid status codes', 
+          invalidStatuses 
+        });
+      }
+      
+      // Check if any statuses being removed have tasks
+      const currentWorkflow = project.statusWorkflow;
+      const removedStatuses = currentWorkflow.filter(status => !statusWorkflow.includes(status));
+      
+      for (const status of removedStatuses) {
+        const hasTasks = await dbService.hasTasksWithStatus(project.id, status);
+        if (hasTasks) {
+          return reply.code(400).send({ 
+            error: `Cannot remove status '${status}' because tasks exist with this status` 
+          });
+        }
+      }
+      
+      // Update the workflow
+      const updatedProject = await dbService.updateProjectStatusWorkflow(
+        project.id, 
+        statusWorkflow, 
+        request.user.id
+      );
+      
+      request.log.info(`Project ${code} status workflow updated by user ${request.user.id}`);
+      reply.send({ 
+        statusWorkflow: updatedProject.status_workflow 
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500).send({ error: 'Failed to update project status workflow' });
     }
   });
 }
